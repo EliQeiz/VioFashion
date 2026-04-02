@@ -183,7 +183,11 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   )
 }
-
+useEffect(() => {
+  console.log('Auth/user:', user)
+  console.log('Profile:', profile)
+  console.log('Loading:', loading)
+}, [user, profile, loading])
 export const useAuth = () => {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
