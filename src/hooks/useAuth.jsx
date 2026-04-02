@@ -1,10 +1,4 @@
 // src/hooks/useAuth.jsx
-// ─────────────────────────────────────────────────────────────
-//  Central auth hook — handles signup, login, logout,
-//  session state, and profile fetching.
-//  Usage: const { user, profile, loading, signUp, signIn, signOut, refreshProfile } = useAuth()
-// ─────────────────────────────────────────────────────────────
-
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 
@@ -23,20 +17,22 @@ export function AuthProvider({ children }) {
         .select('*, profile_services(service)')
         .eq('id', userId)
         .single()
-
+      console.log('🟣 fetchProfile:', { userId, data, error });
       if (error) {
         console.error('❌ fetchProfile error:', error)
+        setProfile(null)
         return
       }
       setProfile(data)
     } catch (err) {
+      setProfile(null)
       console.error('💥 fetchProfile exception:', err)
     }
   }, [])
 
   // ── Listen to auth state changes ──────────────────────────
   useEffect(() => {
-    // Safety timeout — if Supabase doesn't respond in 3s, stop loading
+    // Safety timeout — stop loading after 3s even if Supabase hangs
     const timeout = setTimeout(() => {
       console.warn('⚠️ Supabase auth timeout — forcing loading to false')
       setLoading(false)
@@ -45,6 +41,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         clearTimeout(timeout)
+        console.log('🔵 onAuthStateChange fired:', session)
         setUser(session?.user ?? null)
         if (session?.user) {
           await fetchProfile(session.user.id)
@@ -55,11 +52,23 @@ export function AuthProvider({ children }) {
       }
     )
 
+    // On initial load, check for existing session
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data?.session
+      console.log('🔷 supabase.auth.getSession checked:', session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setProfile(null)
+      }
+      setLoading(false)
+    })
+
     return () => {
       clearTimeout(timeout)
       subscription.unsubscribe()
     }
-    // eslint-disable-next-line
   }, [fetchProfile])
 
   // ── SIGN UP ───────────────────────────────────────────────
@@ -83,7 +92,7 @@ export function AuthProvider({ children }) {
       console.log('✅ [SIGNUP] Auth user created:', data.user?.id)
 
       if (data.user) {
-        // Optionally: Insert or update profile if not auto-handled by your triggers
+        // Optionally insert/update profile if not auto-handled by triggers
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .update({ role, full_name: fullName, username })
@@ -148,7 +157,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ── UPDATE PROFILE ────────────────────────────────────────
+  // ── UPDATE PROFILE ───��────────────────────────────────────
   const updateProfile = async (updates) => {
     try {
       if (!user) throw new Error('Not authenticated')
@@ -167,11 +176,16 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ——— Safe refresh (fixes reference bug) ———
+  // ——— Safe, memoized profile refresh ———
   const refreshProfile = useCallback(() => {
-    if (!user) return;
-    return fetchProfile(user.id);
-  }, [user, fetchProfile]);
+    if (!user) return
+    return fetchProfile(user.id)
+  }, [user, fetchProfile])
+
+  // ——— Diagnostic: log all state changes ———
+  useEffect(() => {
+    console.log('Auth State Changed:', { user, profile, loading })
+  }, [user, profile, loading])
 
   return (
     <AuthContext.Provider value={{
