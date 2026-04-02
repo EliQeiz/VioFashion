@@ -2,10 +2,10 @@
 // ─────────────────────────────────────────────────────────────
 //  Central auth hook — handles signup, login, logout,
 //  session state, and profile fetching.
-//  Usage: const { user, profile, signUp, signIn, signOut } = useAuth()
+//  Usage: const { user, profile, loading, signUp, signIn, signOut, refreshProfile } = useAuth()
 // ─────────────────────────────────────────────────────────────
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 
 const AuthContext = createContext(null)
@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   // ── Fetch profile from DB ──────────────────────────────────
-  const fetchProfile = async (userId) => {
+  const fetchProfile = useCallback(async (userId) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -32,12 +32,11 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('💥 fetchProfile exception:', err)
     }
-  }
+  }, [])
 
   // ── Listen to auth state changes ──────────────────────────
   useEffect(() => {
     // Safety timeout — if Supabase doesn't respond in 3s, stop loading
-    // and show the login screen anyway
     const timeout = setTimeout(() => {
       console.warn('⚠️ Supabase auth timeout — forcing loading to false')
       setLoading(false)
@@ -60,7 +59,8 @@ export function AuthProvider({ children }) {
       clearTimeout(timeout)
       subscription.unsubscribe()
     }
-  }, [])
+    // eslint-disable-next-line
+  }, [fetchProfile])
 
   // ── SIGN UP ───────────────────────────────────────────────
   const signUp = async ({ email, password, username, fullName, role = 'customer' }) => {
@@ -83,6 +83,7 @@ export function AuthProvider({ children }) {
       console.log('✅ [SIGNUP] Auth user created:', data.user?.id)
 
       if (data.user) {
+        // Optionally: Insert or update profile if not auto-handled by your triggers
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .update({ role, full_name: fullName, username })
@@ -91,7 +92,6 @@ export function AuthProvider({ children }) {
 
         if (profileError) {
           console.error('❌ [SIGNUP] Profile update error:', profileError.message)
-          // Don't throw here — auth succeeded, profile update is secondary
         } else {
           console.log('✅ [SIGNUP] Profile updated:', profileData)
         }
@@ -167,6 +167,12 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ——— Safe refresh (fixes reference bug) ———
+  const refreshProfile = useCallback(() => {
+    if (!user) return;
+    return fetchProfile(user.id);
+  }, [user, fetchProfile]);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -177,9 +183,11 @@ export function AuthProvider({ children }) {
       signInWithGoogle,
       signOut,
       updateProfile,
-      refreshProfile: () => user && fetchProfile(user.id),
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>
   )
 }
+
+export const useAuth = () => useContext(AuthContext)
