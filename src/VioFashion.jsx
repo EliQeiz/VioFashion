@@ -69,16 +69,23 @@ const CSS = `
   .nav-post-btn{width:44px;height:44px;background:linear-gradient(135deg,var(--gold),#B8943A);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,0.4);transition:all 0.25s;flex-shrink:0;}
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
-  .nav-pill.compact{left:12px;top:48%;bottom:auto;transform:translateY(-50%);flex-direction:column;border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;}
-  .nav-pill.compact.open{top:50%;height:min(72vh,520px);padding:8px 5px;background:rgba(21,14,32,0.78);border:1px solid rgba(109,40,217,0.24);box-shadow:0 12px 34px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.04) inset;}
-  .nav-roll{display:flex;flex-direction:column;align-items:center;justify-content:space-between;flex:1;width:100%;min-height:0;}
-  .nav-roll.upper{padding-bottom:7px;}
-  .nav-roll.lower{padding-top:7px;}
-  .nav-pill.compact .nav-item{width:32px;height:32px;padding:0;justify-content:center;font-size:0;border-radius:13px;}
+  .nav-pill.compact{left:38px;top:50%;bottom:auto;transform:translate(-50%,-50%);border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;pointer-events:none;touch-action:none;}
+  .nav-pill.compact.open.vertical{height:min(70vh,520px);width:42px;flex-direction:column;}
+  .nav-pill.compact.open.horizontal{width:min(78vw,340px);height:42px;flex-direction:row;}
+  .nav-roll{display:flex;align-items:center;justify-content:space-between;flex:1;min-height:0;min-width:0;pointer-events:none;}
+  .nav-pill.vertical .nav-roll{flex-direction:column;width:100%;}
+  .nav-pill.horizontal .nav-roll{flex-direction:row;height:100%;}
+  .nav-roll.upper{padding:0 7px 7px 0;}
+  .nav-roll.lower{padding:7px 0 0 7px;}
+  .nav-pill.horizontal .nav-roll.upper{padding:0 7px 0 0;}
+  .nav-pill.horizontal .nav-roll.lower{padding:0 0 0 7px;}
+  .nav-pill.compact .nav-item{width:32px;height:32px;padding:0;justify-content:center;font-size:0;border-radius:13px;border:1.8px solid rgba(248,245,255,0.42);background:rgba(21,14,32,0.18);backdrop-filter:blur(8px);pointer-events:auto;}
   .nav-pill.compact .nav-item svg{width:15px;height:15px;}
-  .nav-pill.compact .nav-post-btn{width:34px;height:34px;}
+  .nav-pill.compact .nav-item.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,0.25),0 8px 18px rgba(109,40,217,0.3);}
+  .nav-pill.compact .nav-post-btn{width:34px;height:34px;border:2px solid rgba(248,245,255,0.46);pointer-events:auto;}
   .nav-pill.compact .nav-post-btn svg{width:16px;height:16px;}
-  .nav-toggle-grid{width:38px;height:38px;border:none;border-radius:16px;background:rgba(255,255,255,0.07);border:1px solid var(--border);display:grid;grid-template-columns:repeat(2,6px);grid-template-rows:repeat(2,6px);gap:5px;place-content:center;cursor:pointer;color:var(--white);animation:nav-orbit 4s linear infinite;box-shadow:0 8px 22px rgba(0,0,0,0.4);}
+  .nav-toggle-grid{width:38px;height:38px;border-radius:16px;background:rgba(21,14,32,0.16);border:2px solid rgba(248,245,255,0.75);display:grid;grid-template-columns:repeat(2,6px);grid-template-rows:repeat(2,6px);gap:5px;place-content:center;cursor:grab;color:var(--white);animation:nav-orbit 4s linear infinite;box-shadow:0 8px 22px rgba(0,0,0,0.4);pointer-events:auto;backdrop-filter:blur(8px);}
+  .nav-toggle-grid:active{cursor:grabbing;}
   .nav-toggle-grid span{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(201,168,76,0.45);}
   @keyframes nav-orbit{to{transform:rotate(360deg);}}
   .profile-float-btn{position:absolute;top:16px;right:16px;z-index:190;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.5);transition:all 0.2s;flex-shrink:0;}
@@ -117,6 +124,15 @@ const CSS = `
   .feed-action-circle{width:42px;height:42px;background:rgba(21,14,32,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
   .feed-action-circle.lit{background:linear-gradient(135deg,var(--violet),var(--vio-mid));border-color:transparent;}
   .feed-action-num{font-size:10px;font-weight:600;color:rgba(248,245,255,0.8);}
+  .story-rail{position:absolute;top:78px;left:0;right:0;z-index:12;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:0 18px 10px;pointer-events:auto;}
+  .story-rail::-webkit-scrollbar{display:none;}
+  .story-chip{width:60px;flex:0 0 auto;background:none;border:none;color:var(--white);cursor:pointer;text-align:center;}
+  .story-ring{width:58px;height:58px;border-radius:50%;padding:2px;background:conic-gradient(var(--gold),var(--vio-mid),#EC4899,var(--gold));box-shadow:0 8px 20px rgba(0,0,0,0.28);}
+  .story-ring.mine{background:conic-gradient(var(--gold),var(--gold-lt),var(--vio-mid),var(--gold));}
+  .story-avatar{width:100%;height:100%;border-radius:50%;border:2px solid var(--deep);background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:15px;font-weight:800;position:relative;}
+  .story-avatar img{width:100%;height:100%;object-fit:cover;}
+  .story-plus{position:absolute;right:-1px;bottom:-1px;width:19px;height:19px;border-radius:50%;background:var(--violet);border:2px solid var(--deep);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;}
+  .story-label{display:block;margin-top:5px;font-size:10px;color:rgba(248,245,255,0.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .edition-badge{position:absolute;top:68px;right:14px;display:flex;flex-direction:column;align-items:flex-end;z-index:10;pointer-events:none;}
   .edition-num{font-family:var(--ff-impact);font-size:60px;line-height:1;color:rgba(201,168,76,0.1);letter-spacing:-2px;}
   .edition-label{font-family:var(--ff-sans);font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(201,168,76,0.25);margin-top:-8px;}
@@ -150,6 +166,7 @@ const CSS = `
   .p-item-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
   .p-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,4,9,0.7) 0%,transparent 60%);display:flex;align-items:flex-end;padding:8px;opacity:0;transition:opacity 0.25s;}
   .p-item:hover .p-overlay{opacity:1;}
+  .post-view-media{width:100%;max-height:62vh;border-radius:14px;object-fit:contain;background:#000;margin-bottom:12px;}
   .section-head{font-family:var(--ff-serif);font-size:20px;font-style:italic;font-weight:300;color:var(--white);margin-bottom:14px;display:flex;align-items:center;gap:12px;}
   .section-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .profile-tabs{display:flex;border-bottom:1px solid var(--border);margin:0 20px 16px;overflow-x:auto;scrollbar-width:none;}
@@ -678,6 +695,116 @@ const ROLES = [
   { value: "makeup_artist", emoji: "💄", label: "MUA" },
   { value: "shoemaker", emoji: "👟", label: "Cobbler" },
 ];
+
+function storyExpiry() {
+  return Date.now() + 24 * 60 * 60 * 1000;
+}
+
+function StoryModal({ user, profile, onClose, onPosted }) {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState("");
+  const [caption, setCaption] = useState("");
+  const [error, setError] = useState("");
+  const [posting, setPosting] = useState(false);
+  const fileRef = useRef();
+
+  const pickFile = (f) => {
+    if (!f) return;
+    if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) { setError("Choose an image or video for your story."); return; }
+    if (f.size > MAX_UPLOAD_BYTES) { setError(`Story media must be ${MAX_UPLOAD_LABEL} or smaller.`); return; }
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setError("");
+  };
+
+  const post = async () => {
+    if (!file || !user) { setError("Choose media first."); return; }
+    setPosting(true); setError("");
+    const refDoc = doc(collection(db, "stories"));
+    const ext = cleanFileExt(file);
+    const isVideo = file.type.startsWith("video/");
+    const path = `stories/${user.uid}/${refDoc.id}.${ext}`;
+    const task = uploadBytesResumable(sRef(storage, path), file, { contentType: file.type || (isVideo ? "video/mp4" : "image/jpeg") });
+    task.on("state_changed", null, (err) => { setError(storageErrorMessage(err)); setPosting(false); }, async () => {
+      const url = await getDownloadURL(task.snapshot.ref);
+      await setDoc(refDoc, {
+        author_id: user.uid,
+        media_url: url,
+        media_type: isVideo ? "video" : "image",
+        caption: caption.trim() || null,
+        storage_path: path,
+        created_at: serverTimestamp(),
+        expires_at: storyExpiry(),
+      });
+      setPosting(false);
+      onPosted?.();
+      onClose();
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !posting && onClose()}>
+      <div className="modal-sheet"><div className="sheet-handle" />
+        <div className="sheet-inner">
+          <div className="sheet-title">Create Story</div>
+          <div className="sheet-sub">Share a 24-hour atelier moment</div>
+          {error && <div className="err-box">{error}</div>}
+          <input ref={fileRef} type="file" accept="image/*,video/*" style={{ display: "none" }} onChange={e => pickFile(e.target.files?.[0])} />
+          <div className={`upload-drop-zone ${file ? "has-file" : ""}`} onClick={() => fileRef.current?.click()}>
+            {preview ? (file?.type.startsWith("video/") ? <video src={preview} className="upload-preview" muted playsInline /> : <img src={preview} className="upload-preview" alt="" />) : <><span className="upload-icon">＋</span><div className="upload-label">Add story media</div><div className="upload-sublabel">Image or video · max {MAX_UPLOAD_LABEL}</div></>}
+          </div>
+          <textarea className="modal-input" placeholder={`What are you showing, ${profile?.full_name?.split(" ")[0] || "creator"}?`} rows={2} value={caption} onChange={e => setCaption(e.target.value)} />
+          <button className="modal-submit" disabled={posting || !file} onClick={post}>{posting ? "Posting..." : "Post Story ✦"}</button>
+          <button className="modal-cancel" disabled={posting} onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StoryViewer({ story, onClose }) {
+  const author = story?.author || {};
+  if (!story) return null;
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet" style={{ height: "88vh", padding: 0, overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 12, left: 14, right: 14, zIndex: 4, display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="story-avatar" style={{ width: 34, height: 34, borderColor: "rgba(255,255,255,0.35)" }}>{author.avatar_url ? <img src={author.avatar_url} alt="" /> : initials(author.full_name || author.username)}</div>
+          <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700 }}>{author.full_name || author.username || "Story"}</div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.58)" }}>{timeAgo(story.created_at)}</div></div>
+          <button className="chat-back-btn" onClick={onClose}><IcoX /></button>
+        </div>
+        {story.media_type === "video" ? <video src={story.media_url} autoPlay controls playsInline style={{ width: "100%", height: "100%", objectFit: "cover", background: "#000" }} /> : <img src={story.media_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", background: "#000" }} />}
+        {story.caption && <div style={{ position: "absolute", left: 16, right: 16, bottom: 18, zIndex: 4, background: "rgba(6,4,9,0.5)", border: "1px solid rgba(255,255,255,0.16)", borderRadius: 14, padding: "11px 13px", fontSize: 13 }}>{story.caption}</div>}
+      </div>
+    </div>
+  );
+}
+
+function PostViewerModal({ video, onClose, onComment }) {
+  if (!video) return null;
+  const mediaUrl = video.video_url || video.media_url || video.thumbnail_url;
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet" style={{ maxHeight: "92vh" }}>
+        <div className="sheet-handle" />
+        <div className="sheet-inner">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div><div className="sheet-title" style={{ marginBottom: 0 }}>Post</div><div className="sheet-sub" style={{ marginBottom: 0 }}>{timeAgo(video.created_at)}</div></div>
+            <button className="chat-back-btn" onClick={onClose}><IcoX /></button>
+          </div>
+          {video.video_url ? <video className="post-view-media" src={video.video_url} controls autoPlay playsInline /> : <img className="post-view-media" src={mediaUrl} alt="" />}
+          {video.caption && <p className="profile-bio" style={{ margin: "0 0 12px", maxWidth: "none" }}>{video.caption}</p>}
+          <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+            <button className="btn-ghost">❤️ {fmt(video.likes_count || 0)}</button>
+            <button className="btn-ghost" onClick={() => onComment?.(video)}>💬 {fmt(video.comments_count || 0)}</button>
+            <button className="btn-ghost">🔖 {fmt(video.saves_count || 0)}</button>
+          </div>
+          <button className="modal-submit" onClick={async () => { await shareItem({ title: "VioFashion post", text: video.caption || "View my VioFashion post" }); }}>Share Post</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ════════════════════════════════════════════════════════════
 //  UPLOAD MODAL — Firebase Storage with REAL progress
@@ -1619,7 +1746,7 @@ function ShareSheet({ video, user, onClose, onShared }) {
   );
 }
 
-function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
+function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
   const [tab, setTab]           = useState("discover");
   const [videos, setVideos]     = useState([]);
   const [liked, setLiked]       = useState({});
@@ -1632,6 +1759,9 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   const [shareVideoItem, setShareVideoItem] = useState(null);
   const [quickActions, setQuickActions] = useState(null);
   const [viewCreator, setViewCreator]   = useState(null);
+  const [stories, setStories] = useState([]);
+  const [showStoryCreate, setShowStoryCreate] = useState(false);
+  const [activeStory, setActiveStory] = useState(null);
   const pressTimer = useRef(null);
   const lastTap = useRef({});
 
@@ -1651,6 +1781,25 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
     });
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "stories"), orderBy("created_at", "desc"), limit(60));
+    const unsub = onSnapshot(q, async (snap) => {
+      const now = Date.now();
+      const rows = await Promise.all(snap.docs.map(async (d) => {
+        const story = { id: d.id, ...d.data() };
+        if (story.expires_at && story.expires_at < now) return null;
+        if (story.author_id) {
+          const ps = await getDoc(doc(db, "profiles", story.author_id));
+          story.author = ps.exists() ? { id: ps.id, ...ps.data() } : null;
+        }
+        return story;
+      }));
+      setStories(rows.filter(Boolean));
+    }, error => console.error("Failed to load stories", error));
+    return unsub;
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -1776,7 +1925,19 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   };
 
   return (
-    <div style={{ height: "100%" }}>
+    <div style={{ height: "100%", position: "relative" }}>
+      <div className="story-rail">
+        <button className="story-chip" onClick={() => setShowStoryCreate(true)}>
+          <span className="story-ring mine"><span className="story-avatar">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : initials(profile?.full_name || user?.email || "Me")}<span className="story-plus">+</span></span></span>
+          <span className="story-label">Your story</span>
+        </button>
+        {stories.map((s, i) => (
+          <button key={s.id} className="story-chip" onClick={() => setActiveStory(s)}>
+            <span className="story-ring"><span className="story-avatar" style={{ background: PALETTES[i % PALETTES.length] }}>{s.author?.avatar_url ? <img src={s.author.avatar_url} alt="" /> : initials(s.author?.full_name || s.author?.username)}</span></span>
+            <span className="story-label">{s.author?.username || s.author?.full_name || "Story"}</span>
+          </button>
+        ))}
+      </div>
       <div className="feed-wrap">
         {feedModeNotice && <div style={{ position: "absolute", top: 72, left: 18, right: 18, zIndex: 70, background: "rgba(21,14,32,0.88)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "9px 12px", color: "var(--gold-lt)", fontSize: 11, textAlign: "center" }}>{feedModeNotice}</div>}
         {display.length === 0 && <div className="empty-state" style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}><div className="empty-icon">✦</div><div className="empty-title">No posts here yet</div><div className="empty-sub">Follow creators or switch back to Discover</div></div>}
@@ -1844,6 +2005,8 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
         </div>
       )}
       {viewCreator && <CreatorProfileModal creatorId={viewCreator} currentUser={user} onClose={() => setViewCreator(null)} onStartChat={conv => { setViewCreator(null); onStartChat?.(conv); }} />}
+      {showStoryCreate && <StoryModal user={user} profile={profile} onClose={() => setShowStoryCreate(false)} />}
+      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
     </div>
   );
 }
@@ -1938,6 +2101,9 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
   const [tab, setTab]     = useState("portfolio");
   const [videos, setVideos] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewPost, setViewPost] = useState(null);
+  const [commentPost, setCommentPost] = useState(null);
+  const [avatarStatus, setAvatarStatus] = useState("");
   const fileRef = useRef();
   const dp = profile || {};
   const fullName = dp.full_name || user?.email?.split("@")[0] || "My Profile";
@@ -1953,13 +2119,30 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
   const uploadAvatar = async (e) => {
     const file = e.target.files[0];
     if (!file || !user) return;
-    const ext  = file.name.split(".").pop();
+    if (!file.type.startsWith("image/")) {
+      setAvatarStatus("Choose an image file for your profile picture.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setAvatarStatus(`Profile picture must be ${MAX_UPLOAD_LABEL} or smaller.`);
+      e.target.value = "";
+      return;
+    }
+    setAvatarStatus("Uploading profile picture...");
+    const ext = cleanFileExt(file);
     const path = `avatars/${user.uid}/avatar.${ext}`;
-    const task = uploadBytesResumable(sRef(storage, path), file);
-    task.on("state_changed", null, null, async () => {
+    const task = uploadBytesResumable(sRef(storage, path), file, { contentType: file.type });
+    task.on("state_changed", null, (err) => {
+      setAvatarStatus(storageErrorMessage(err));
+      e.target.value = "";
+    }, async () => {
       const url = await getDownloadURL(task.snapshot.ref);
       await updateDoc(doc(db, "profiles", user.uid), { avatar_url: url });
       onProfileUpdated();
+      setAvatarStatus("Profile picture updated.");
+      e.target.value = "";
+      window.setTimeout(() => setAvatarStatus(""), 2200);
     });
   };
 
@@ -1997,7 +2180,8 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
               <div key={l} className="profile-stat"><span className="profile-stat-n">{n}</span><span className="profile-stat-l">{l}</span></div>
             ))}
           </div>
-          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-ghost" onClick={onSettings} title="Settings"><IcoGear /></button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
+          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={() => fileRef.current?.click()}>Photo</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-ghost" onClick={onSettings} title="Settings"><IcoGear /></button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
+          {avatarStatus && <div style={{ marginTop: 10, color: "var(--gold)", fontSize: 12, fontWeight: 700 }}>{avatarStatus}</div>}
           {dp.services?.length > 0 && <div className="service-chips">{dp.services.map(s => <span key={s} className="service-chip">{s}</span>)}</div>}
         </div>
         <div className="profile-tabs">{tabs.map(t => (<button key={t.id} onClick={() => setTab(t.id)} className="profile-tab" style={{ color: tab === t.id ? "var(--white)" : "var(--muted)", borderBottom: `1.5px solid ${tab === t.id ? "var(--gold)" : "transparent"}` }}>{t.label}</button>))}</div>
@@ -2006,10 +2190,11 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
             <div className="section-head">Works</div>
             {videos.length > 0 ? (
               <div className="portfolio-grid">{videos.map((v, i) => (
-                <div key={v.id} className="p-item" style={{ background: v.thumbnail_url ? `url(${v.thumbnail_url}) center/cover` : portPals[i % portPals.length] }}>
-                  {!v.thumbnail_url && <div className="p-item-inner"><span style={{ fontFamily: "var(--ff-serif)", fontSize: i === 0 ? 36 : 22, fontStyle: "italic", color: "rgba(255,255,255,0.2)" }}>#{i + 1}</span></div>}
+                <button key={v.id} className="p-item" onClick={() => setViewPost(v)} style={{ background: v.thumbnail_url ? `url(${v.thumbnail_url}) center/cover` : portPals[i % portPals.length], border: 0, padding: 0, cursor: "pointer", textAlign: "left" }}>
+                  {!v.thumbnail_url && v.video_url && <video src={v.video_url} muted playsInline preload="metadata" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  {!v.thumbnail_url && !v.video_url && <div className="p-item-inner"><span style={{ fontFamily: "var(--ff-serif)", fontSize: i === 0 ? 36 : 22, fontStyle: "italic", color: "rgba(255,255,255,0.2)" }}>#{i + 1}</span></div>}
                   <div className="p-overlay"><span style={{ fontSize: 10, color: "rgba(255,255,255,0.8)" }}>❤ {fmt(v.likes_count)}</span></div>
-                </div>
+                </button>
               ))}</div>
             ) : <div className="empty-state"><div className="empty-icon">🎬</div><div className="empty-title">No posts yet</div><div className="empty-sub">Tap the gold + button to share your first post</div></div>}
             <div style={{ height: 100 }} />
@@ -2020,6 +2205,8 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
         {tab === "reviews"   && <div style={{ padding: "0 20px 100px" }}><div className="section-head">Reviews</div><div className="empty-state"><div className="empty-icon">⭐</div><div className="empty-title">No reviews yet</div><div className="empty-sub">Reviews from clients appear after completed orders</div></div></div>}
       </div>
       {showEdit && <EditProfileModal user={user} profile={profile} onClose={() => setShowEdit(false)} onSaved={() => { onProfileUpdated(); setShowEdit(false); }} />}
+      {viewPost && <PostViewerModal video={viewPost} onClose={() => setViewPost(null)} onComment={(v) => setCommentPost(v)} />}
+      {commentPost && <CommentsModal video={{ ...commentPost, creator: profile }} user={user} onClose={() => setCommentPost(null)} />}
     </>
   );
 }
@@ -2665,10 +2852,22 @@ const NAV = [
 
 export default function VioFashion() {
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const shellRef = useRef(null);
   const [screen, setScreen]       = useState("feed");
   const [showUpload, setShowUpload] = useState(false);
   const [pendingConv, setPendingConv] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [shellSize, setShellSize] = useState(() => ({ width: window.innerWidth || 390, height: window.innerHeight || 720 }));
+  const [navPos, setNavPos] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("vio-nav-pos") || "null");
+      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) return saved;
+    } catch {
+      // Use the centered left edge when no saved position exists.
+    }
+    return { x: 38, y: Math.round((window.innerHeight || 720) * 0.5) };
+  });
+  const navDragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0 });
   const [theme, setTheme] = useState(() => localStorage.getItem("vio-theme") || "adaptive");
   const [chatTheme, setChatTheme] = useState(() => localStorage.getItem("vio-chat-theme") || "violet");
   const { unreadCount } = useNotifications(user?.uid);
@@ -2690,16 +2889,56 @@ export default function VioFashion() {
   useEffect(() => { injectFonts(); injectCSS(); }, []);
   useEffect(() => { localStorage.setItem("vio-theme", theme); }, [theme]);
   useEffect(() => { localStorage.setItem("vio-chat-theme", chatTheme); }, [chatTheme]);
+  useEffect(() => { localStorage.setItem("vio-nav-pos", JSON.stringify(navPos)); }, [navPos]);
+  useEffect(() => {
+    const update = () => {
+      const rect = shellRef.current?.getBoundingClientRect();
+      setShellSize({ width: rect?.width || window.innerWidth || 390, height: rect?.height || window.innerHeight || 720 });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   const handleNav = (id) => { setNavOpen(false); if (id === "post") { setShowUpload(true); return; } setScreen(id); };
   const openChat  = (conv) => { setPendingConv(conv); setScreen("chat"); };
+  const clampNavPosition = useCallback((clientX, clientY) => {
+    const rect = shellRef.current?.getBoundingClientRect();
+    const left = rect?.left || 0;
+    const top = rect?.top || 0;
+    const width = rect?.width || window.innerWidth || 390;
+    const height = rect?.height || window.innerHeight || 720;
+    return {
+      x: Math.min(Math.max(clientX - left, 24), width - 24),
+      y: Math.min(Math.max(clientY - top, 32), height - 32),
+    };
+  }, []);
+  const navPointerDown = (e) => {
+    navDragRef.current = { dragging: true, moved: false, startX: e.clientX, startY: e.clientY };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const navPointerMove = (e) => {
+    const drag = navDragRef.current;
+    if (!drag.dragging) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 5) drag.moved = true;
+    if (drag.moved) {
+      setNavOpen(false);
+      setNavPos(clampNavPosition(e.clientX, e.clientY));
+    }
+  };
+  const navPointerUp = (e) => {
+    const drag = navDragRef.current;
+    navDragRef.current = { ...drag, dragging: false };
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (!drag.moved) setNavOpen(p => !p);
+  };
 
   const dp       = profile || {};
   const fullName = dp.full_name || user?.email?.split("@")[0] || "";
 
   const render = () => {
     switch (screen) {
-      case "feed":          return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
+      case "feed":          return <FeedScreen user={user} profile={profile} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
       case "profile":       return <ProfileScreen user={user} profile={profile} onSignOut={signOut} onProfileUpdated={refreshProfile} onSettings={() => setScreen("settings")} />;
       case "market":        return <MarketScreen user={user} profile={profile} />;
       case "chat":          return <ChatScreen user={user} pendingConv={pendingConv} onConvOpened={() => setPendingConv(null)} />;
@@ -2707,12 +2946,13 @@ export default function VioFashion() {
       case "search":        return <SearchScreen user={user} profile={profile} onStartChat={openChat} />;
       case "notifications": return <NotificationsScreen user={user} />;
       case "settings":      return <SettingsScreen theme={theme} setTheme={setTheme} chatTheme={chatTheme} setChatTheme={setChatTheme} onProfile={() => setScreen("profile")} onBack={() => setScreen("feed")} />;
-      default:              return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
+      default:              return <FeedScreen user={user} profile={profile} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
     }
   };
 
   const isSecondary = screen === "search" || screen === "notifications";
   const compactNav = true;
+  const navAxis = (navPos.y < 120 || navPos.y > shellSize.height - 120) ? "horizontal" : "vertical";
   const navItems = compactNav
     ? [...NAV, { id: "profile", label: "Profile", icon: <span style={{ fontSize: 15, fontWeight: 800 }}>{initials(fullName) || "P"}</span> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
     : NAV;
@@ -2730,7 +2970,7 @@ export default function VioFashion() {
   };
 
   return (
-    <div className={`shell theme-${theme} chat-${chatTheme}`}>
+    <div ref={shellRef} className={`shell theme-${theme} chat-${chatTheme}`}>
       <div className="screen-wrap">{render()}</div>
       {screen === "feed" && (
         <div className="profile-float-btn" onClick={() => setScreen("profile")} style={{ background: dp.avatar_url ? "transparent" : PALETTES[0] }}>
@@ -2740,9 +2980,9 @@ export default function VioFashion() {
       {isSecondary && (
         <button onClick={() => setScreen("feed")} style={{ position: "absolute", top: 18, right: 16, zIndex: 190, width: 34, height: 34, background: "rgba(21,14,32,0.8)", border: "1px solid var(--border)", backdropFilter: "blur(10px)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--white)" }}><IcoX /></button>
       )}
-      <div className={`nav-pill ${compactNav ? "compact" : ""} ${navOpen ? "open" : ""}`}>
+      <div className={`nav-pill ${compactNav ? "compact" : ""} ${navOpen ? "open" : ""} ${navAxis}`} style={{ left: navPos.x, top: navPos.y }}>
         {navOpen && <div className="nav-roll upper">{upperNavItems.map(renderNavItem)}</div>}
-        <button className="nav-toggle-grid" onClick={() => setNavOpen(p => !p)} title="Navigation"><span /><span /><span /><span /></button>
+        <button className="nav-toggle-grid" onPointerDown={navPointerDown} onPointerMove={navPointerMove} onPointerUp={navPointerUp} onPointerCancel={navPointerUp} title="Drag or tap navigation"><span /><span /><span /><span /></button>
         {navOpen && <div className="nav-roll lower">{lowerNavItems.map(renderNavItem)}</div>}
       </div>
       {showUpload && <UploadModal user={user} onClose={() => setShowUpload(false)} onSuccess={() => { setShowUpload(false); setScreen("feed"); }} />}

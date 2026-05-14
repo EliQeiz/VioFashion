@@ -78,6 +78,12 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.follower_id == request.auth.uid;
     }
 
+    match /stories/{storyId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.author_id == request.auth.uid;
+    }
+
     match /requests/{requestId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.customer_id == request.auth.uid;

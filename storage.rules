@@ -38,6 +38,11 @@ service firebase.storage {
       allow write: if isOwner(userId) && validMedia();
     }
 
+    match /stories/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && validMedia();
+    }
+
     match /portfolio/{userId}/{fileName} {
       allow read: if true;
       allow write: if isOwner(userId) && validMedia();
