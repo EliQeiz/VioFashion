@@ -282,37 +282,57 @@ function authErrorMessage(error) {
     'auth/configuration-not-found': 'Firebase Authentication is not enabled for this project yet. In Firebase Console, go to Authentication > Get started, then enable Email/Password under Sign-in method.',
     'auth/operation-not-allowed': 'This sign-in method is disabled in Firebase. Enable Email/Password or Google in Authentication > Sign-in method.',
     'auth/email-already-in-use': 'An account already exists for this email. Try signing in instead.',
-    'auth/invalid-credential': 'The email or password is incorrect.',
+    'auth/account-exists-with-different-credential': 'This email already uses another sign-in method. Try Google sign-in or reset your password.',
+    'auth/invalid-credential': 'The email or password is incorrect. If this account was created with Google, use Continue with Google or reset your password.',
     'auth/invalid-email': 'Please enter a valid email address.',
     'auth/user-not-found': 'No account was found for this email.',
     'auth/wrong-password': 'The password is incorrect.',
     'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/popup-blocked': 'Your browser blocked the Google popup. Redirecting to Google sign-in...',
+    'auth/cancelled-popup-request': 'Google sign-in was interrupted. Please try again.',
     'auth/popup-closed-by-user': 'Google sign-in was closed before it finished.',
-    'auth/unauthorized-domain': 'This domain is not authorized in Firebase Authentication settings.',
+    'auth/unauthorized-domain': 'This Vercel domain is not authorized in Firebase. Add it in Firebase Console > Authentication > Settings > Authorized domains.',
+    'auth/too-many-requests': 'Too many attempts. Please wait a few minutes, then try again or reset your password.',
   }
 
   return messages[code] || error?.message || 'Authentication failed.'
 }
 
 function Login({ onSwitch }) {
-  const { signIn, signInWithGoogle } = useAuth()
+  const { signIn, signInWithGoogle, resetPassword } = useAuth()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError]       = useState('')
+  const [success, setSuccess]   = useState('')
 
   const submit = async () => {
     if (!email || !password) { setError('Please enter your email and password.'); return }
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setSuccess('')
     try { await signIn({ email, password }) }
     catch (e) { setError(authErrorMessage(e)) }
     finally { setLoading(false) }
   }
 
   const googleSignIn = async () => {
-    setError('')
+    setGoogleLoading(true); setError(''); setSuccess('')
     try { await signInWithGoogle() }
     catch (e) { setError(authErrorMessage(e)) }
+    finally { setGoogleLoading(false) }
+  }
+
+  const forgotPassword = async () => {
+    if (!email) { setError('Enter your email address first, then tap Forgot password.'); return }
+    setLoading(true); setError(''); setSuccess('')
+    try {
+      await resetPassword(email)
+      setSuccess(`Password reset email sent to ${email}. Check your inbox and spam folder.`)
+    } catch (e) {
+      setError(authErrorMessage(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -326,6 +346,18 @@ function Login({ onSwitch }) {
       </div>
 
       <ErrorBox msg={error}/>
+      {success && (
+        <div style={{
+          background:'rgba(52,211,153,0.1)',
+          border:'1px solid rgba(52,211,153,0.25)',
+          borderRadius:10, padding:'12px 16px',
+          marginBottom:20, fontFamily:T.fontBody,
+          fontSize:13, color:'#34D399',
+          animation:'vio-fadein 0.3s ease',
+        }}>
+          {success}
+        </div>
+      )}
 
       <Field label="Email Address" type="email" placeholder="you@example.com"
         value={email} onChange={e => setEmail(e.target.value)} autoComplete="email"/>
@@ -334,7 +366,7 @@ function Login({ onSwitch }) {
         value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password"/>
 
       <div style={{textAlign:'right', marginTop:-10, marginBottom:28}}>
-        <span className="vio-link" style={{fontFamily:T.fontBody, fontSize:12, color:T.muted, cursor:'pointer'}}>
+        <span className="vio-link" onClick={forgotPassword} style={{fontFamily:T.fontBody, fontSize:12, color:T.muted, cursor:'pointer'}}>
           Forgot password?
         </span>
       </div>
@@ -343,12 +375,13 @@ function Login({ onSwitch }) {
 
       <Divider/>
 
-      <button className="vio-google-btn" onClick={googleSignIn} style={{
+      <button className="vio-google-btn" onClick={googleSignIn} disabled={googleLoading} style={{
         width:'100%', background:'rgba(255,255,255,0.04)',
         border:`1px solid ${T.border}`, borderRadius:12,
         padding:'13px 24px', color:T.white,
         fontFamily:T.fontBody, fontSize:14, fontWeight:500,
-        cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+        cursor: googleLoading ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+        opacity: googleLoading ? 0.65 : 1,
       }}>
         <svg width="18" height="18" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -356,7 +389,7 @@ function Login({ onSwitch }) {
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
-        Continue with Google
+        {googleLoading ? 'Opening Google...' : 'Continue with Google'}
       </button>
 
       <div style={{textAlign:'center', marginTop:28, fontFamily:T.fontBody, fontSize:13, color:T.muted, fontWeight:300}}>

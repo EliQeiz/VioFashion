@@ -3,9 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  getRedirectResult,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -25,6 +28,15 @@ function normalizeProfile(data) {
 async function fetchProfile(uid) {
   const snap = await getDoc(doc(db, "profiles", uid));
   return snap.exists() ? normalizeProfile({ id: snap.id, ...snap.data() }) : null;
+}
+
+async function ensureProfile(firebaseUser, overrides = {}) {
+  const existing = await fetchProfile(firebaseUser.uid);
+  if (existing) return existing;
+
+  const profileData = createBaseProfile(firebaseUser, overrides);
+  await setDoc(doc(db, "profiles", firebaseUser.uid), profileData);
+  return normalizeProfile(profileData);
 }
 
 function createBaseProfile(user, overrides = {}) {
@@ -94,7 +106,17 @@ export function AuthProvider({ children }) {
 
       fetchProfile(firebaseUser.uid)
         .then((data) => {
-          setProfile(data);
+          if (data) {
+            setProfile(data);
+            return data;
+          }
+
+          return ensureProfile(firebaseUser).then((createdProfile) => {
+            setProfile(createdProfile);
+            return createdProfile;
+          });
+        })
+        .then(() => {
           setAuthError(null);
         })
         .catch((profileError) => {
@@ -113,6 +135,20 @@ export function AuthProvider({ children }) {
       window.clearTimeout(loadingTimeout);
       unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result?.user) return;
+        const data = await ensureProfile(result.user);
+        setUser(result.user);
+        setProfile(data);
+      })
+      .catch((error) => {
+        console.error("Google redirect sign-in failed", error);
+        setAuthError(error);
+      });
   }, []);
 
   const signIn = async ({ email, password }) => {
@@ -137,18 +173,35 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const credential = await signInWithPopup(auth, provider);
-    const existing = await fetchProfile(credential.user.uid);
+    provider.setCustomParameters({ prompt: "select_account" });
 
-    if (!existing) {
-      const profileData = createBaseProfile(credential.user);
-      await setDoc(doc(db, "profiles", credential.user.uid), profileData);
-      setProfile(normalizeProfile(profileData));
-    } else {
-      setProfile(existing);
+    try {
+      const credential = await signInWithPopup(auth, provider);
+      const data = await ensureProfile(credential.user);
+      setUser(credential.user);
+      setProfile(data);
+      return credential;
+    } catch (error) {
+      const redirectableCodes = new Set([
+        "auth/popup-blocked",
+        "auth/popup-closed-by-user",
+        "auth/cancelled-popup-request",
+      ]);
+
+      if (redirectableCodes.has(error?.code)) {
+        await signInWithRedirect(auth, provider);
+        return null;
+      }
+
+      throw error;
     }
+  };
 
-    return credential;
+  const resetPassword = async (email) => {
+    return sendPasswordResetEmail(auth, email, {
+      url: window.location.origin,
+      handleCodeInApp: false,
+    });
   };
 
   const signOut = async () => {
@@ -168,6 +221,7 @@ export function AuthProvider({ children }) {
         signUp,
         signOut,
         signInWithGoogle,
+        resetPassword,
         refreshProfile,
       }}
     >
