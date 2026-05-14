@@ -51,11 +51,16 @@ const CSS = `
     --ff-serif:'Cormorant Garamond',Georgia,serif;
     --ff-sans:'Jost',system-ui,sans-serif;
     --ff-impact:'Bebas Neue',sans-serif;
+    --accent-grad:linear-gradient(135deg,var(--violet),#5B21B6);
   }
   html,body,#root{height:100%;width:100%;}
   body{background:var(--ink);color:var(--white);font-family:var(--ff-sans);overflow:hidden;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:2px;}::-webkit-scrollbar-thumb{background:var(--violet);border-radius:2px;}
   .shell{position:relative;width:100%;max-width:430px;height:100vh;margin:0 auto;background:var(--deep);overflow:hidden;box-shadow:0 0 120px rgba(109,40,217,0.25);}
+  .shell.theme-light{--ink:#F5F0FF;--deep:#FBF8FF;--surface:#FFFFFF;--elevated:#F1EAFB;--border:rgba(39,26,58,0.12);--white:#171020;--muted:rgba(23,16,32,0.55);--accent-grad:linear-gradient(135deg,#6D28D9,#C9A84C);box-shadow:0 0 120px rgba(201,168,76,0.2);}
+  .shell.theme-black{--ink:#000000;--deep:#030205;--surface:#09060D;--elevated:#100A18;--border:rgba(255,255,255,0.09);--white:#FFFFFF;--muted:rgba(255,255,255,0.44);--accent-grad:linear-gradient(135deg,#111111,#6D28D9);}
+  .shell.chat-gold{--accent-grad:linear-gradient(135deg,var(--gold),#A67C1B);}
+  .shell.chat-mono{--accent-grad:linear-gradient(135deg,#27272A,#71717A);}
   .screen-wrap{position:absolute;inset:0;overflow:hidden;}
   .nav-pill{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;align-items:center;background:rgba(21,14,32,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(109,40,217,0.3);border-radius:100px;padding:6px 8px;gap:2px;box-shadow:0 8px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04) inset;}
   .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:100px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--ff-sans);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;transition:all 0.25s;position:relative;}
@@ -64,6 +69,12 @@ const CSS = `
   .nav-post-btn{width:44px;height:44px;background:linear-gradient(135deg,var(--gold),#B8943A);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,0.4);transition:all 0.25s;flex-shrink:0;}
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
+  .nav-pill.compact{left:12px;bottom:98px;transform:none;flex-direction:column;border-radius:28px;padding:7px;gap:8px;background:rgba(21,14,32,0.86);}
+  .nav-pill.compact .nav-item{width:46px;height:46px;padding:0;justify-content:center;font-size:0;border-radius:17px;}
+  .nav-pill.compact .nav-post-btn{width:46px;height:46px;}
+  .nav-toggle-grid{width:46px;height:46px;border:none;border-radius:18px;background:rgba(255,255,255,0.07);border:1px solid var(--border);display:grid;grid-template-columns:repeat(2,8px);grid-template-rows:repeat(2,8px);gap:5px;place-content:center;cursor:pointer;color:var(--white);animation:nav-orbit 4s linear infinite;}
+  .nav-toggle-grid span{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(201,168,76,0.45);}
+  @keyframes nav-orbit{to{transform:rotate(360deg);}}
   .profile-float-btn{position:absolute;top:16px;right:16px;z-index:190;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.5);transition:all 0.2s;flex-shrink:0;}
   .profile-float-btn img{width:100%;height:100%;object-fit:cover;}
   .feed-wrap{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;}
@@ -240,6 +251,7 @@ const CSS = `
   .chat-win-av{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;overflow:hidden;}
   .chat-win-av img{width:100%;height:100%;object-fit:cover;}
   .chat-win-info{flex:1;}
+  .chat-win-person{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:none;color:inherit;text-align:left;cursor:pointer;padding:0;}
   .chat-win-name{font-size:15px;font-weight:600;}
   .chat-win-status{font-size:11px;color:var(--green);}
   .call-row{display:flex;gap:8px;}
@@ -251,13 +263,27 @@ const CSS = `
   .msg-wrap.inc{align-self:flex-start;}
   .msg-bubble{padding:10px 14px;border-radius:16px;font-size:13px;font-weight:300;line-height:1.55;}
   .msg-wrap.inc .msg-bubble{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
-  .msg-wrap.out .msg-bubble{background:linear-gradient(135deg,var(--violet),#5B21B6);border-bottom-right-radius:4px;}
+  .msg-wrap.out .msg-bubble{background:var(--accent-grad);border-bottom-right-radius:4px;}
   .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;}
   .chat-inp-bar{display:flex;align-items:center;gap:10px;padding:12px 16px 20px;border-top:1px solid var(--border);background:rgba(6,4,9,0.6);backdrop-filter:blur(10px);flex-shrink:0;}
   .chat-inp{flex:1;background:rgba(21,14,32,0.8);border:1px solid var(--border);border-radius:100px;padding:11px 18px;color:var(--white);font-family:var(--ff-sans);font-size:13px;font-weight:300;outline:none;}
   .chat-inp::placeholder{color:var(--muted);}
   .chat-inp:focus{border-color:rgba(109,40,217,0.4);}
-  .chat-send{width:40px;height:40px;background:linear-gradient(135deg,var(--violet),#5B21B6);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+  .chat-send{width:40px;height:40px;background:var(--accent-grad);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:var(--white);}
+  .emoji-wrap{position:relative;display:inline-flex;flex-shrink:0;}
+  .emoji-toggle{width:38px;height:38px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,0.06);color:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .emoji-pop{position:absolute;bottom:46px;left:0;display:grid;grid-template-columns:repeat(5,32px);gap:6px;padding:8px;border:1px solid var(--border);border-radius:16px;background:rgba(21,14,32,0.96);backdrop-filter:blur(16px);box-shadow:0 16px 40px rgba(0,0,0,0.45);z-index:400;}
+  .emoji-pop button{width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.05);cursor:pointer;}
+  .mention-wrap{position:relative;display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;}
+  .mention-wrap textarea{margin-bottom:0;}
+  .mention-tools{display:flex;flex-direction:column;gap:8px;}
+  .mini-tool-btn{width:38px;height:38px;border-radius:13px;border:1px solid var(--border);background:rgba(255,255,255,0.06);color:var(--white);cursor:pointer;font-weight:700;}
+  .mention-pop{position:absolute;right:0;top:44px;width:min(260px,calc(100vw - 56px));max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:16px;background:rgba(21,14,32,0.97);backdrop-filter:blur(16px);z-index:420;padding:10px;box-shadow:0 16px 40px rgba(0,0,0,0.45);}
+  .mention-search{width:100%;background:rgba(6,4,9,0.5);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--white);outline:none;margin-bottom:8px;}
+  .mention-row{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;color:var(--white);padding:8px;border-radius:10px;cursor:pointer;text-align:left;}
+  .mention-row:hover{background:rgba(109,40,217,0.1);}
+  .mention-av{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:11px;font-weight:700;flex-shrink:0;}
+  .mention-av img{width:100%;height:100%;object-fit:cover;}
   .live-outer{position:relative;height:100%;overflow:hidden;}
   .live-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(0.5);}
   .live-cinema{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,4,9,0.98) 0%,rgba(6,4,9,0.4) 40%,rgba(6,4,9,0.55) 100%);}
@@ -287,7 +313,7 @@ const CSS = `
   .live-inp{flex:1;background:rgba(21,14,32,0.7);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:100px;padding:10px 18px;color:var(--white);font-family:var(--ff-sans);font-size:13px;outline:none;}
   .live-inp::placeholder{color:var(--muted);}
   .live-gift-btn{width:40px;height:40px;background:linear-gradient(135deg,var(--gold),#B8943A);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;}
-  .live-send{width:40px;height:40px;background:linear-gradient(135deg,var(--violet),#5B21B6);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+  .live-send{width:40px;height:40px;background:var(--accent-grad);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:var(--white);}
   .live-golive-card{position:absolute;bottom:110px;left:18px;right:70px;z-index:10;background:rgba(21,14,32,0.85);backdrop-filter:blur(12px);border:1px solid rgba(109,40,217,0.3);border-radius:18px;padding:16px;}
   .live-golive-title{font-family:var(--ff-serif);font-size:18px;font-style:italic;color:var(--white);margin-bottom:4px;}
   .live-golive-sub{font-size:11px;color:var(--muted);margin-bottom:12px;}
@@ -345,7 +371,7 @@ const CSS = `
   .modal-input:focus{border-color:rgba(109,40,217,0.5);}
   .modal-label{font-family:var(--ff-sans);font-size:10px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block;}
   .modal-row{display:flex;gap:10px;margin-bottom:12px;}
-  .modal-submit{width:100%;background:linear-gradient(135deg,var(--violet),#5B21B6);border:none;border-radius:14px;padding:14px;color:var(--white);font-family:var(--ff-sans);font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 20px rgba(109,40,217,0.35);}
+  .modal-submit{width:100%;background:var(--accent-grad);border:none;border-radius:14px;padding:14px;color:var(--white);font-family:var(--ff-sans);font-size:14px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 20px rgba(109,40,217,0.35);}
   .modal-submit:disabled{opacity:0.5;cursor:not-allowed;}
   .modal-cancel{width:100%;background:transparent;border:1px solid var(--border);border-radius:14px;padding:12px;color:var(--muted);font-family:var(--ff-sans);font-size:13px;cursor:pointer;margin-top:8px;}
   .upload-drop-zone{border:2px dashed rgba(109,40,217,0.35);border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.25s;margin-bottom:16px;position:relative;overflow:hidden;}
@@ -474,6 +500,7 @@ const IcoEye      = () => <Ico s={16} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-
 const IcoLogout   = () => <Ico s={16} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9" />;
 const IcoCheck    = () => <Ico s={16} d="M20 6L9 17l-5-5" />;
 const IcoX        = () => <Ico s={14} sw={2} d="M18 6L6 18 M6 6l12 12" />;
+const IcoGear     = () => <Ico s={18} d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1H4a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 .51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6V4a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 .51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.34.58.6 1H20a2 2 0 1 1 0 4h-.09c-.26.42-.46.69-.51 1z" />;
 const IcoMusic    = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>);
 const IcoX2       = () => <Ico s={16} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const Spinner = () => <div className="spin-wrap"><div className="spin" /></div>;
@@ -490,6 +517,60 @@ const REACTIONS = [
 ];
 const reactionById = (id) => REACTIONS.find(r => r.id === id) || REACTIONS[0];
 const QUICK_EMOJIS = ["❤️", "🔥", "👏", "😍", "😂", "😊", "😮", "🙏", "✨", "💯"];
+
+function EmojiPicker({ onPick, align = "left" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="emoji-wrap">
+      <button type="button" className="emoji-toggle" onClick={() => setOpen(p => !p)} title="Emoji">☺</button>
+      {open && (
+        <div className="emoji-pop" style={align === "right" ? { left: "auto", right: 0 } : null}>
+          {QUICK_EMOJIS.map(e => (
+            <button key={e} type="button" onClick={() => { onPick(e); setOpen(false); }}>{e}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserMentionPicker({ currentUid, onPick }) {
+  const [open, setOpen] = useState(false);
+  const [term, setTerm] = useState("");
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(async () => {
+      const needle = term.trim().toLowerCase();
+      const snap = await getDocs(query(collection(db, "profiles"), limit(100)));
+      setUsers(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.id !== currentUid)
+        .filter(p => !needle || (p.username || "").toLowerCase().includes(needle) || (p.full_name || "").toLowerCase().includes(needle))
+        .slice(0, 8));
+    }, term.trim() ? 180 : 40);
+    return () => window.clearTimeout(t);
+  }, [open, term, currentUid]);
+
+  return (
+    <div className="emoji-wrap">
+      <button type="button" className="mini-tool-btn" onClick={() => setOpen(p => !p)} title="Tag user">@</button>
+      {open && (
+        <div className="mention-pop">
+          <input className="mention-search" placeholder="Search users..." value={term} onChange={e => setTerm(e.target.value)} />
+          {users.map((p, i) => (
+            <button key={p.id} type="button" className="mention-row" onClick={() => { onPick(`@${p.username || p.full_name || p.id} `); setOpen(false); setTerm(""); }}>
+              <span className="mention-av" style={{ background: PALETTES[i % PALETTES.length] }}>{p.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p.full_name || p.username)}</span>
+              <span><strong>{p.full_name || p.username}</strong><br /><small>@{p.username || "user"}</small></span>
+            </button>
+          ))}
+          {users.length === 0 && <div style={{ padding: 10, color: "var(--muted)", fontSize: 12 }}>No users found</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 async function shareItem({ title = "VioFashion", text = "Check this out on VioFashion", url = window.location.href } = {}) {
   if (navigator.share) {
@@ -722,7 +803,13 @@ function UploadModal({ user, onClose, onSuccess }) {
               )}
               {error && <div className="err-box">{error}</div>}
               <label className="modal-label">Caption</label>
-              <textarea className="modal-input" placeholder="Describe your creation…" rows={2} value={caption} onChange={e => setCaption(e.target.value)} />
+              <div className="mention-wrap">
+                <textarea className="modal-input" placeholder="Describe your creation... tag people with @username" rows={2} value={caption} onChange={e => setCaption(e.target.value)} />
+                <div className="mention-tools">
+                  <EmojiPicker onPick={e => setCaption(p => `${p}${e}`)} align="right" />
+                  <UserMentionPicker currentUid={user?.uid} onPick={handle => setCaption(p => `${p}${p.endsWith(" ") || !p ? "" : " "}${handle}`)} />
+                </div>
+              </div>
               <label className="modal-label">Tags</label>
               <input className="modal-input" placeholder="#KenteFashion #BespokeTailor" value={tags} onChange={e => setTags(e.target.value)} />
               <label className="modal-label">Sound / Music</label>
@@ -923,10 +1010,8 @@ function CommentsModal({ video, user, onClose }) {
           </div>
         </div>
         {replyTo && <div style={{ padding: "8px 16px 0", fontSize: 11, color: "var(--gold-lt)" }}>Replying to {replyTo.author?.username || replyTo.author?.full_name || "comment"} <button onClick={() => setReplyTo(null)} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}>Cancel</button></div>}
-        <div style={{ display: "flex", gap: 6, padding: "8px 16px 0", overflowX: "auto", scrollbarWidth: "none" }}>
-          {QUICK_EMOJIS.map(e => <button key={e} onClick={() => setText(p => `${p}${e}`)} style={{ width: 30, height: 30, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", cursor: "pointer" }}>{e}</button>)}
-        </div>
         <div className="comment-inp-bar">
+          <EmojiPicker onPick={e => setText(p => `${p}${e}`)} />
           <input className="comment-inp" placeholder={replyTo ? "Write a reply..." : "Add a comment..."} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
           <button className="comment-send" onClick={send} disabled={sending}><IcoSend /></button>
         </div>
@@ -1836,7 +1921,7 @@ function OrdersTab({ user, profile }) {
 // ════════════════════════════════════════════════════════════
 //  PROFILE SCREEN
 // ════════════════════════════════════════════════════════════
-function ProfileScreen({ user, profile, onSignOut, onProfileUpdated }) {
+function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings }) {
   const isCreator = CREATOR_ROLES.includes(profile?.role);
   const [tab, setTab]     = useState("portfolio");
   const [videos, setVideos] = useState([]);
@@ -1900,7 +1985,7 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated }) {
               <div key={l} className="profile-stat"><span className="profile-stat-n">{n}</span><span className="profile-stat-l">{l}</span></div>
             ))}
           </div>
-          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
+          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-ghost" onClick={onSettings} title="Settings"><IcoGear /></button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
           {dp.services?.length > 0 && <div className="service-chips">{dp.services.map(s => <span key={s} className="service-chip">{s}</span>)}</div>}
         </div>
         <div className="profile-tabs">{tabs.map(t => (<button key={t.id} onClick={() => setTab(t.id)} className="profile-tab" style={{ color: tab === t.id ? "var(--white)" : "var(--muted)", borderBottom: `1.5px solid ${tab === t.id ? "var(--gold)" : "transparent"}` }}>{t.label}</button>))}</div>
@@ -2091,6 +2176,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const [recording, setRecording] = useState(false);
   const [voiceUploading, setVoiceUploading] = useState(false);
   const [loading, setLoading]   = useState(true);
+  const [viewCreator, setViewCreator] = useState(null);
   const endRef = useRef();
   const recorderRef = useRef(null);
   const voiceChunksRef = useRef([]);
@@ -2272,8 +2358,10 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
           <div className="chat-window open">
             <div className="chat-win-head">
               <button className="chat-back-btn" onClick={() => setOpen(null)}><IcoBack /></button>
-              <div className="chat-win-av" style={{ background: PALETTES[pal] }}>{o?.avatar_url ? <img src={o.avatar_url} alt="" /> : initials(o?.full_name || o?.username)}</div>
-              <div className="chat-win-info"><div className="chat-win-name">{o?.full_name || o?.username}</div><div className="chat-win-status">● Active</div></div>
+              <button className="chat-win-person" onClick={() => o?.id && setViewCreator(o.id)} title="View profile">
+                <span className="chat-win-av" style={{ background: PALETTES[pal] }}>{o?.avatar_url ? <img src={o.avatar_url} alt="" /> : initials(o?.full_name || o?.username)}</span>
+                <span className="chat-win-info"><span className="chat-win-name">{o?.full_name || o?.username}</span><span className="chat-win-status">● Active</span></span>
+              </button>
               <div className="call-row"><button className="call-ico" onClick={() => startCall("Voice")}><IcoPhone /></button><button className="call-ico" onClick={() => startCall("Video")}><IcoVid /></button></div>
             </div>
             {callNotice && <div style={{ margin: "10px 16px 0", background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)", color: "var(--gold-lt)", borderRadius: 12, padding: "9px 12px", fontSize: 12 }}>{callNotice}</div>}
@@ -2289,15 +2377,14 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
               })}
               <div ref={endRef} />
             </div>
-            <div style={{ display: "flex", gap: 6, padding: "8px 16px 0", overflowX: "auto", scrollbarWidth: "none", background: "rgba(6,4,9,0.6)" }}>
-              {QUICK_EMOJIS.map(e => <button key={e} onClick={() => setMsg(p => `${p}${e}`)} style={{ width: 30, height: 30, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", cursor: "pointer" }}>{e}</button>)}
-            </div>
             <div className="chat-inp-bar">
+              <EmojiPicker onPick={e => setMsg(p => `${p}${e}`)} />
               <input className="chat-inp" placeholder="Write a message…" value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
               <button className="chat-send" onClick={toggleRecording} title="Voice note" style={recording ? { background: "linear-gradient(135deg,#DC2626,#B91C1C)" } : null}>{recording ? "■" : "🎙"}</button>
               <button className="chat-send" onClick={send}><IcoSend /></button>
             </div>
             {voiceUploading && <div style={{ position: "absolute", bottom: 78, left: 16, right: 16, fontSize: 11, color: "var(--gold-lt)", textAlign: "center" }}>Uploading voice note...</div>}
+            {viewCreator && <CreatorProfileModal creatorId={viewCreator} currentUser={user} onClose={() => setViewCreator(null)} onStartChat={conv => { setViewCreator(null); setOpen({ ...conv, other: o, participants: conv.participants || open.participants }); }} />}
           </div>
         );
       })()}
@@ -2418,7 +2505,7 @@ function LiveScreen({ user, profile }) {
         </div>
       )}
       <div className="live-ticker"><div className="live-ticker-inner">{doubled.map((m, i) => (<div key={i} className="live-ticker-msg"><span className="ticker-user">{m.user}</span><span className="ticker-text">{m.msg}</span><span style={{ color: "rgba(248,245,255,0.2)", fontSize: 10 }}>·</span></div>))}</div></div>
-      <div className="live-bottom"><input className="live-inp" placeholder="Say something to the designer..." value={chatMsg} onChange={e => setChatMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && sendLiveChat()} /><button className="live-gift-btn" onClick={() => { setTicker(p => [{ user: profile?.username || "You", msg: "sent a gift" }, ...p].slice(0, 8)); showNotice("Gift sent."); }}>??</button><button className="live-send" onClick={sendLiveChat}><IcoSend /></button></div>{notice && <div style={{ position: "absolute", left: 18, right: 18, bottom: 86, zIndex: 30, background: "rgba(21,14,32,0.92)", border: "1px solid rgba(201,168,76,0.25)", color: "var(--gold-lt)", borderRadius: 14, padding: "10px 14px", fontSize: 12, textAlign: "center" }}>{notice}</div>}
+      <div className="live-bottom"><EmojiPicker onPick={e => setChatMsg(p => `${p}${e}`)} /><input className="live-inp" placeholder="Say something to the designer..." value={chatMsg} onChange={e => setChatMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && sendLiveChat()} /><button className="live-gift-btn" onClick={() => { setTicker(p => [{ user: profile?.username || "You", msg: "sent a gift" }, ...p].slice(0, 8)); showNotice("Gift sent."); }}>??</button><button className="live-send" onClick={sendLiveChat}><IcoSend /></button></div>{notice && <div style={{ position: "absolute", left: 18, right: 18, bottom: 86, zIndex: 30, background: "rgba(21,14,32,0.92)", border: "1px solid rgba(201,168,76,0.25)", color: "var(--gold-lt)", borderRadius: 14, padding: "10px 14px", fontSize: 12, textAlign: "center" }}>{notice}</div>}
       {showGoLive && <GoLiveModal user={user} profile={profile} onClose={() => setShowGoLive(false)} onLive={stream => { setActiveStream(stream); setShowGoLive(false); }} />}
     </div>
   );
@@ -2427,6 +2514,48 @@ function LiveScreen({ user, profile }) {
 // ════════════════════════════════════════════════════════════
 //  ROOT
 // ════════════════════════════════════════════════════════════
+function SettingsScreen({ theme, setTheme, chatTheme, setChatTheme, onProfile, onBack }) {
+  const themeChoices = [
+    ["adaptive", "Adaptive", "Keeps the current VioFashion look."],
+    ["light", "White", "Bright mode for daytime use."],
+    ["black", "Black", "Pure dark mode for late sessions."],
+  ];
+  const chatChoices = [
+    ["violet", "Violet", "Default chat bubbles."],
+    ["gold", "Gold", "Warmer message styling."],
+    ["mono", "Mono", "Quiet neutral chat styling."],
+  ];
+  const choiceStyle = (active) => ({
+    width: "100%", textAlign: "left", border: `1px solid ${active ? "var(--gold)" : "var(--border)"}`,
+    background: active ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)", color: "var(--white)",
+    borderRadius: 14, padding: "13px 14px", cursor: "pointer", marginBottom: 10,
+  });
+  return (
+    <div className="profile-scroll">
+      <div className="notif-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div><div className="chat-head-title" style={{ marginBottom: 2 }}>Settings</div><div style={{ color: "var(--muted)", fontSize: 12 }}>Themes, profile, and chat style</div></div>
+        <button className="chat-back-btn" onClick={onBack}><IcoX /></button>
+      </div>
+      <div style={{ padding: 20 }}>
+        <div className="section-head">App Theme</div>
+        {themeChoices.map(([id, label, sub]) => (
+          <button key={id} style={choiceStyle(theme === id)} onClick={() => setTheme(id)}>
+            <strong>{label}</strong><br /><span style={{ color: "var(--muted)", fontSize: 12 }}>{sub}</span>
+          </button>
+        ))}
+        <div className="section-head" style={{ marginTop: 22 }}>Chat Theme</div>
+        {chatChoices.map(([id, label, sub]) => (
+          <button key={id} style={choiceStyle(chatTheme === id)} onClick={() => setChatTheme(id)}>
+            <strong>{label}</strong><br /><span style={{ color: "var(--muted)", fontSize: 12 }}>{sub}</span>
+          </button>
+        ))}
+        <div className="section-head" style={{ marginTop: 22 }}>Profile</div>
+        <button className="btn-gold" onClick={onProfile} style={{ width: "100%" }}>Edit Profile</button>
+      </div>
+    </div>
+  );
+}
+
 const NAV = [
   { id: "feed",   label: "Discover", icon: <IcoHome /> },
   { id: "market", label: "Atelier",  icon: <IcoMarket /> },
@@ -2440,6 +2569,9 @@ export default function VioFashion() {
   const [screen, setScreen]       = useState("feed");
   const [showUpload, setShowUpload] = useState(false);
   const [pendingConv, setPendingConv] = useState(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("vio-theme") || "adaptive");
+  const [chatTheme, setChatTheme] = useState(() => localStorage.getItem("vio-chat-theme") || "violet");
   const { unreadCount } = useNotifications(user?.uid);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
 
@@ -2457,8 +2589,10 @@ export default function VioFashion() {
   }, [user, screen]);
 
   useEffect(() => { injectFonts(); injectCSS(); }, []);
+  useEffect(() => { localStorage.setItem("vio-theme", theme); }, [theme]);
+  useEffect(() => { localStorage.setItem("vio-chat-theme", chatTheme); }, [chatTheme]);
 
-  const handleNav = (id) => { if (id === "post") { setShowUpload(true); return; } setScreen(id); };
+  const handleNav = (id) => { setNavOpen(false); if (id === "post") { setShowUpload(true); return; } setScreen(id); };
   const openChat  = (conv) => { setPendingConv(conv); setScreen("chat"); };
 
   const dp       = profile || {};
@@ -2467,22 +2601,27 @@ export default function VioFashion() {
   const render = () => {
     switch (screen) {
       case "feed":          return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
-      case "profile":       return <ProfileScreen user={user} profile={profile} onSignOut={signOut} onProfileUpdated={refreshProfile} />;
+      case "profile":       return <ProfileScreen user={user} profile={profile} onSignOut={signOut} onProfileUpdated={refreshProfile} onSettings={() => setScreen("settings")} />;
       case "market":        return <MarketScreen user={user} profile={profile} />;
       case "chat":          return <ChatScreen user={user} pendingConv={pendingConv} onConvOpened={() => setPendingConv(null)} />;
       case "live":          return <LiveScreen user={user} profile={profile} />;
       case "search":        return <SearchScreen user={user} profile={profile} onStartChat={openChat} />;
       case "notifications": return <NotificationsScreen user={user} />;
+      case "settings":      return <SettingsScreen theme={theme} setTheme={setTheme} chatTheme={chatTheme} setChatTheme={setChatTheme} onProfile={() => setScreen("profile")} onBack={() => setScreen("feed")} />;
       default:              return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
     }
   };
 
   const isSecondary = screen === "search" || screen === "notifications";
+  const compactNav = screen !== "feed";
+  const navItems = compactNav
+    ? [...NAV, { id: "profile", label: "Profile", icon: <span style={{ fontSize: 15, fontWeight: 800 }}>{initials(fullName) || "P"}</span> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
+    : NAV;
 
   return (
-    <div className="shell">
+    <div className={`shell theme-${theme} chat-${chatTheme}`}>
       <div className="screen-wrap">{render()}</div>
-      {screen !== "profile" && !isSecondary && (
+      {screen === "feed" && (
         <div className="profile-float-btn" onClick={() => setScreen("profile")} style={{ background: dp.avatar_url ? "transparent" : PALETTES[0] }}>
           {dp.avatar_url ? <img src={dp.avatar_url} alt={fullName} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>{initials(fullName) || "👤"}</span>}
         </div>
@@ -2490,14 +2629,15 @@ export default function VioFashion() {
       {isSecondary && (
         <button onClick={() => setScreen("feed")} style={{ position: "absolute", top: 18, right: 16, zIndex: 190, width: 34, height: 34, background: "rgba(21,14,32,0.8)", border: "1px solid var(--border)", backdropFilter: "blur(10px)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--white)" }}><IcoX /></button>
       )}
-      <div className="nav-pill">
-        {NAV.map(item => {
+      <div className={`nav-pill ${compactNav ? "compact" : ""}`}>
+        {compactNav && <button className="nav-toggle-grid" onClick={() => setNavOpen(p => !p)} title="Navigation"><span /><span /><span /><span /></button>}
+        {(!compactNav || navOpen) && navItems.map(item => {
           if (item.id === "post") return <button key="post" className="nav-post-btn" onClick={() => handleNav("post")}><IcoPlus /></button>;
           const isActive = screen === item.id;
           const hasBadge = (item.id === "chat" && unreadMsgs > 0) || (item.id === "feed" && unreadCount > 0);
           return (
-            <button key={item.id} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => handleNav(item.id)}>
-              {item.icon}{item.label}{hasBadge && <div className="nav-badge" />}
+            <button key={item.id} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => handleNav(item.id)} title={item.label}>
+              {item.icon}{!compactNav && item.label}{hasBadge && <div className="nav-badge" />}
             </button>
           );
         })}
