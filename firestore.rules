@@ -21,6 +21,10 @@ service cloud.firestore {
         || (
           signedIn()
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['followers_count'])
+        )
+        || (
+          signedIn()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['following_count'])
         );
     }
 
@@ -31,6 +35,10 @@ service cloud.firestore {
         resource.data.creator_id == request.auth.uid
         || request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'likes_count',
+          'happy_count',
+          'wow_count',
+          'sad_count',
+          'angry_count',
           'comments_count',
           'shares_count',
           'saves_count',
@@ -43,6 +51,12 @@ service cloud.firestore {
     match /video_likes/{likeId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow delete: if signedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /video_reactions/{reactionId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.user_id == request.auth.uid;
       allow delete: if signedIn() && resource.data.user_id == request.auth.uid;
     }
 

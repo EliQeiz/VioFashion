@@ -479,6 +479,16 @@ const IcoX2       = () => <Ico s={16} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const Spinner = () => <div className="spin-wrap"><div className="spin" /></div>;
 const isDemoId = (id) => typeof id === "string" && id.startsWith("d");
 const isDemoCreatorId = (id) => typeof id === "string" && id.startsWith("x");
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_LABEL = "10MB";
+const REACTIONS = [
+  { id: "love", label: "Love", icon: "❤️", countField: "likes_count" },
+  { id: "happy", label: "Happy", icon: "😊", countField: "happy_count" },
+  { id: "wow", label: "Wow", icon: "🔥", countField: "wow_count" },
+  { id: "sad", label: "Sad", icon: "😢", countField: "sad_count" },
+  { id: "angry", label: "Angry", icon: "😡", countField: "angry_count" },
+];
+const reactionById = (id) => REACTIONS.find(r => r.id === id) || REACTIONS[0];
 
 async function shareItem({ title = "VioFashion", text = "Check this out on VioFashion", url = window.location.href } = {}) {
   if (navigator.share) {
@@ -487,6 +497,31 @@ async function shareItem({ title = "VioFashion", text = "Check this out on VioFa
   }
   await navigator.clipboard?.writeText(url);
   return "Link copied to clipboard.";
+}
+
+async function createNotification({ userId, actorId, type, meta = null, videoId = null, requestId = null, conversationId = null }) {
+  if (!userId || userId === actorId) return null;
+  return addDoc(collection(db, "notifications"), {
+    user_id: userId,
+    actor_id: actorId,
+    type,
+    meta,
+    video_id: videoId,
+    request_id: requestId,
+    conversation_id: conversationId,
+    read: false,
+    created_at: serverTimestamp(),
+  });
+}
+
+async function notifyCreators({ actorId, type, meta, requestId }) {
+  const snap = await getDocs(query(collection(db, "profiles"), limit(150)));
+  const creatorRoles = new Set(CREATOR_ROLES);
+  const recipients = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.id !== actorId && creatorRoles.has(p.role))
+    .slice(0, 40);
+  await Promise.all(recipients.map(p => createNotification({ userId: p.id, actorId, type, meta, requestId })));
 }
 
 function storageErrorMessage(error) {
@@ -564,7 +599,7 @@ function UploadModal({ user, onClose, onSuccess }) {
   const pickFile = (f) => {
     if (!f) return;
     if (!f.type.startsWith("video/") && !f.type.startsWith("image/")) { setError("Please select a video or image file."); return; }
-    if (f.size > 100 * 1024 * 1024) { setError("File must be under 100MB."); return; }
+    if (f.size > MAX_UPLOAD_BYTES) { setError(`File must be ${MAX_UPLOAD_LABEL} or smaller for beta.`); return; }
     setFile(f); setError("");
     setPreview(URL.createObjectURL(f));
   };
@@ -621,7 +656,8 @@ function UploadModal({ user, onClose, onSuccess }) {
             tagged_user_ids: mentioned.map(p => p.id),
             sound_name:    soundName.trim() || null,
             is_published:  true,
-            likes_count: 0, comments_count: 0, shares_count: 0, saves_count: 0, views_count: 0,
+            likes_count: 0, happy_count: 0, wow_count: 0, sad_count: 0, angry_count: 0,
+            comments_count: 0, shares_count: 0, saves_count: 0, views_count: 0,
             created_at:    serverTimestamp(),
           });
           await Promise.all(mentioned.map(p => addDoc(collection(db, "notifications"), {
@@ -665,7 +701,7 @@ function UploadModal({ user, onClose, onSuccess }) {
                     ? <video src={preview} className="upload-preview" muted playsInline />
                     : <img src={preview} className="upload-preview" alt="preview" />
                 ) : (
-                  <><span className="upload-icon">🎬</span><div className="upload-label">Drop your video or photo here</div><div className="upload-sublabel">MP4, MOV, JPG, PNG · Max 100MB</div></>
+                  <><span className="upload-icon">🎬</span><div className="upload-label">Drop your video or photo here</div><div className="upload-sublabel">MP4, MOV, JPG, PNG · Max {MAX_UPLOAD_LABEL}</div></>
                 )}
                 {file && <div style={{ marginTop: 8, fontSize: 11, color: "var(--gold)" }}>
                   {file.name} · {(file.size / 1024 / 1024).toFixed(1)}MB
@@ -780,6 +816,7 @@ function CommentsModal({ video, user, onClose }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [text, setText]         = useState("");
+  const [replyTo, setReplyTo]   = useState(null);
   const [sending, setSending]   = useState(false);
   const endRef = useRef();
 
@@ -827,22 +864,20 @@ function CommentsModal({ video, user, onClose }) {
         await addDoc(collection(db, "video_comments"), {
           video_id:  video.id,
           author_id: user.uid,
+          parent_comment_id: replyTo?.id || null,
           content,
           created_at: serverTimestamp(),
         });
         if (video.id) await updateDoc(doc(db, "videos", video.id), { comments_count: increment(1) });
-        if (video.creator_id && video.creator_id !== user.uid) {
-          await addDoc(collection(db, "notifications"), {
-            user_id: video.creator_id,
-            actor_id: user.uid,
-            type: "comment",
-            video_id: video.id,
-            meta: content.slice(0, 120),
-            read: false,
-            created_at: serverTimestamp(),
-          });
-        }
+        await createNotification({
+          userId: replyTo?.author_id || video.creator_id,
+          actorId: user.uid,
+          type: replyTo?.author_id ? "reply" : "comment",
+          videoId: video.id,
+          meta: content.slice(0, 120),
+        });
       }
+      setReplyTo(null);
     } finally {
       setSending(false);
     }
@@ -864,22 +899,26 @@ function CommentsModal({ video, user, onClose }) {
             {loading && <Spinner />}
             {!loading && comments.length === 0 && <div className="empty-state"><div className="empty-icon">💬</div><div className="empty-title">Be the first</div><div className="empty-sub">No comments yet.</div></div>}
             {comments.map((c, i) => (
-              <div key={c.id} className="comment-row">
+              <div key={c.id} className="comment-row" style={c.parent_comment_id ? { marginLeft: 28 } : null}>
                 <div className="comment-av" style={{ background: PALETTES[i % PALETTES.length] }}>
                   {c.author?.avatar_url ? <img src={c.author.avatar_url} alt="" /> : initials(c.author?.full_name || c.author?.username)}
                 </div>
                 <div className="comment-body">
                   <div className="comment-name">{c.author?.full_name || c.author?.username || "User"}</div>
                   <div className="comment-text">{c.content}</div>
-                  <div className="comment-time">{timeAgo(c.created_at)}</div>
+                  <div className="comment-time" style={{ display: "flex", gap: 12 }}>
+                    <span>{timeAgo(c.created_at)}</span>
+                    <button onClick={() => setReplyTo(c)} style={{ background: "none", border: "none", color: "var(--gold)", fontSize: 10, cursor: "pointer", padding: 0 }}>Reply</button>
+                  </div>
                 </div>
               </div>
             ))}
             <div ref={endRef} />
           </div>
         </div>
+        {replyTo && <div style={{ padding: "8px 16px 0", fontSize: 11, color: "var(--gold-lt)" }}>Replying to {replyTo.author?.username || replyTo.author?.full_name || "comment"} <button onClick={() => setReplyTo(null)} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}>Cancel</button></div>}
         <div className="comment-inp-bar">
-          <input className="comment-inp" placeholder="Add a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
+          <input className="comment-inp" placeholder={replyTo ? "Write a reply..." : "Add a comment..."} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
           <button className="comment-send" onClick={send} disabled={sending}><IcoSend /></button>
         </div>
       </div>
@@ -902,6 +941,13 @@ function MakeOfferModal({ request, user, onClose, onSuccess }) {
     setSubmitting(true); setError("");
     try {
       await submitOffer({ requestId: request.id, creatorId: user.uid, message: form.message.trim(), price: parseFloat(form.price), deliveryDays: parseInt(form.deliveryDays) });
+      await createNotification({
+        userId: request.customer_id,
+        actorId: user.uid,
+        type: "offer",
+        requestId: request.id,
+        meta: request.title,
+      });
       onSuccess?.(); onClose();
     } catch (err) { setError(err.message || "Failed to submit offer."); }
     finally { setSubmitting(false); }
@@ -1034,6 +1080,13 @@ function GoLiveModal({ user, profile, onClose, onLive }) {
     setStarting(true); setError("");
     try {
       const stream = await startLiveStream({ creatorId: user.uid, title: form.title.trim(), category: form.category });
+      const followers = await getDocs(query(collection(db, "follows"), where("following_id", "==", user.uid), limit(120)));
+      await Promise.all(followers.docs.map(d => createNotification({
+        userId: d.data().follower_id,
+        actorId: user.uid,
+        type: "live",
+        meta: form.title.trim(),
+      })));
       onLive(stream); onClose();
     } catch (err) { setError(err.message || "Failed to start stream."); }
     finally { setStarting(false); }
@@ -1077,7 +1130,13 @@ function NotificationsScreen({ user }) {
     like:    { icon: "❤️", cls: "notif-type-like",    text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> liked your post{n.meta ? ` ${n.meta}` : ""}</> },
     follow:  { icon: "👤", cls: "notif-type-follow",  text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> started following you</> },
     comment: { icon: "💬", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> commented: "{n.meta}"</> },
+    reply:   { icon: "↩", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> replied: "{n.meta}"</> },
     tag:     { icon: "@", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> tagged you in a post</> },
+    share:   { icon: "↗", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> shared {n.meta || "your post"}</> },
+    save:    { icon: "□", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> saved {n.meta || "your post"}</> },
+    message: { icon: "✉", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> sent you a message</> },
+    live:    { icon: "●", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> is live: "{n.meta}"</> },
+    commission: { icon: "✦", cls: "notif-type-offer", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> posted a commission: "{n.meta}"</> },
     offer:   { icon: "🧵", cls: "notif-type-offer",   text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> made an offer on "{n.meta}"</> },
   };
   return (
@@ -1351,15 +1410,115 @@ function PaymentModal({ order, user, profile, onClose, onPaid }) {
 // ════════════════════════════════════════════════════════════
 //  FEED SCREEN
 // ════════════════════════════════════════════════════════════
+function ShareSheet({ video, user, onClose, onShared }) {
+  const [queryStr, setQueryStr] = useState("");
+  const [people, setPeople] = useState([]);
+  const [sendingTo, setSendingTo] = useState(null);
+  const mediaUrl = video?.video_url || video?.thumbnail_url || video?.media_url;
+  const shareUrl = `${window.location.origin}/?post=${video?.id || ""}`;
+
+  useEffect(() => {
+    if (!user) return;
+    const loadPeople = async () => {
+      const snap = await getDocs(query(collection(db, "profiles"), limit(80)));
+      const needle = queryStr.trim().toLowerCase();
+      setPeople(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.id !== user.uid)
+        .filter(p => !needle || (p.full_name || "").toLowerCase().includes(needle) || (p.username || "").toLowerCase().includes(needle))
+        .slice(0, 12));
+    };
+    loadPeople();
+  }, [queryStr, user]);
+
+  const nativeShare = async () => {
+    const msg = await shareItem({ title: "VioFashion post", text: video?.caption || "Check out this VioFashion post", url: shareUrl });
+    if (video?.id && !isDemoId(video.id)) await updateDoc(doc(db, "videos", video.id), { shares_count: increment(1) });
+    if (user?.uid && video?.creator_id) await createNotification({ userId: video.creator_id, actorId: user.uid, type: "share", videoId: video.id, meta: video.caption?.slice(0, 80) || "your post" });
+    onShared?.(msg);
+  };
+  const copyLink = async () => {
+    await navigator.clipboard?.writeText(shareUrl);
+    onShared?.("Post link copied.");
+  };
+  const downloadMedia = () => {
+    if (!mediaUrl) return;
+    const a = document.createElement("a");
+    a.href = mediaUrl;
+    a.download = `viofashion-${video?.id || Date.now()}`;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    onShared?.("Download started.");
+  };
+  const sendToUser = async (person) => {
+    if (!user || !person?.id || !video?.id) return;
+    setSendingTo(person.id);
+    const conv = await getOrCreateConversation(user.uid, person.id);
+    const content = `Shared a VioFashion post: ${video.caption || shareUrl}`;
+    await addDoc(collection(db, "messages"), {
+      conversation_id: conv.id,
+      sender_id: user.uid,
+      content,
+      shared_video_id: video.id,
+      shared_url: shareUrl,
+      type: "share",
+      created_at: serverTimestamp(),
+    });
+    await updateDoc(doc(db, "conversations", conv.id), { last_message: content, last_message_at: serverTimestamp() });
+    if (!isDemoId(video.id)) await updateDoc(doc(db, "videos", video.id), { shares_count: increment(1) });
+    await createNotification({ userId: person.id, actorId: user.uid, type: "message", conversationId: conv.id, meta: "shared a post with you" });
+    if (video.creator_id) await createNotification({ userId: video.creator_id, actorId: user.uid, type: "share", videoId: video.id, meta: video.caption?.slice(0, 80) || "your post" });
+    onShared?.(`Sent to ${person.full_name || person.username}.`);
+    setSendingTo(null);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-sheet"><div className="sheet-handle" />
+        <div className="sheet-scroll"><div className="sheet-inner">
+          <div className="sheet-title">Share Post</div>
+          <div className="sheet-sub">Send it inside VioFashion or share outside the app</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
+            <button className="role-btn" onClick={nativeShare}>Share</button>
+            <button className="role-btn" onClick={copyLink}>Copy</button>
+            <button className="role-btn" onClick={downloadMedia}>Download</button>
+          </div>
+          <label className="modal-label">Send to user</label>
+          <input className="modal-input" placeholder="Search people..." value={queryStr} onChange={e => setQueryStr(e.target.value)} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {people.map((p, i) => (
+              <button key={p.id} onClick={() => sendToUser(p)} disabled={sendingTo === p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", borderRadius: 12, padding: 10, color: "var(--white)", cursor: "pointer" }}>
+                <span className="chat-av" style={{ width: 34, height: 34, background: PALETTES[i % PALETTES.length] }}>{p.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p.full_name || p.username)}</span>
+                <span style={{ textAlign: "left", flex: 1 }}><span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>{p.full_name || p.username}</span><span style={{ fontSize: 11, color: "var(--muted)" }}>@{p.username}</span></span>
+                <span style={{ fontSize: 11, color: "var(--gold)" }}>{sendingTo === p.id ? "Sending..." : "Send"}</span>
+              </button>
+            ))}
+          </div>
+          <button className="modal-cancel" onClick={onClose}>Close</button>
+        </div></div>
+      </div>
+    </div>
+  );
+}
+
 function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   const [tab, setTab]           = useState("discover");
   const [videos, setVideos]     = useState([]);
   const [liked, setLiked]       = useState({});
+  const [reactions, setReactions] = useState({});
   const [saved, setSaved]       = useState({});
+  const [muted, setMuted]       = useState({});
   const [followed, setFollowed] = useState({});
   const [notice, setNotice]     = useState("");
   const [commentVideo, setCommentVideo] = useState(null);
+  const [shareVideoItem, setShareVideoItem] = useState(null);
+  const [quickActions, setQuickActions] = useState(null);
   const [viewCreator, setViewCreator]   = useState(null);
+  const pressTimer = useRef(null);
+  const lastTap = useRef({});
 
   useEffect(() => {
     const q = query(collection(db, "videos"), where("is_published", "==", true), orderBy("created_at", "desc"), limit(20));
@@ -1378,6 +1537,21 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      getDocs(query(collection(db, "follows"), where("follower_id", "==", user.uid), limit(200))),
+      getDocs(query(collection(db, "video_saves"), where("user_id", "==", user.uid), limit(200))),
+      getDocs(query(collection(db, "video_reactions"), where("user_id", "==", user.uid), limit(200))),
+    ]).then(([fSnap, sSnap, rSnap]) => {
+      setFollowed(Object.fromEntries(fSnap.docs.map(d => [d.data().following_id, true])));
+      setSaved(Object.fromEntries(sSnap.docs.map(d => [d.data().video_id, true])));
+      const reactionMap = Object.fromEntries(rSnap.docs.map(d => [d.data().video_id, d.data().reaction || "love"]));
+      setReactions(reactionMap);
+      setLiked(Object.fromEntries(Object.entries(reactionMap).map(([videoId, reaction]) => [videoId, reaction === "love"])));
+    }).catch(error => console.error("Failed to load social state", error));
+  }, [user]);
+
   const showNotice = (msg) => {
     setNotice(msg);
     window.clearTimeout(showNotice.t);
@@ -1386,59 +1560,82 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
 
   const allVideos = videos.length > 0 ? videos : DEMO_VIDEOS;
   const display = tab === "following"
-    ? allVideos.filter(v => followed[v.creator?.id] || v.creator_id === user?.uid)
+    ? allVideos.filter(v => followed[v.creator?.id || v.creator_id] || v.creator_id === user?.uid)
     : tab === "trending"
-      ? [...allVideos].sort((a, b) => ((b.likes_count || 0) + (b.comments_count || 0) + (b.shares_count || 0)) - ((a.likes_count || 0) + (a.comments_count || 0) + (a.shares_count || 0)))
+      ? [...allVideos].sort((a, b) => ((b.likes_count || 0) + (b.happy_count || 0) + (b.wow_count || 0) + (b.comments_count || 0) + (b.shares_count || 0)) - ((a.likes_count || 0) + (a.happy_count || 0) + (a.wow_count || 0) + (a.comments_count || 0) + (a.shares_count || 0)))
       : allVideos;
 
-  const toggleLike = async (id) => {
-    const isLiked = liked[id];
+  const setReaction = async (id, reactionId = "love") => {
+    const current = reactions[id] || (liked[id] ? "love" : null);
+    const next = current === reactionId ? null : reactionId;
     const video = allVideos.find(v => v.id === id);
-    setLiked(p => ({ ...p, [id]: !isLiked }));
-    setVideos(p => p.map(v => v.id === id ? { ...v, likes_count: Math.max(0, (v.likes_count || 0) + (isLiked ? -1 : 1)) } : v));
+    const currentField = current ? reactionById(current).countField : null;
+    const nextField = next ? reactionById(next).countField : null;
+    setReactions(p => ({ ...p, [id]: next }));
+    setLiked(p => ({ ...p, [id]: next === "love" }));
+    setVideos(p => p.map(v => {
+      if (v.id !== id) return v;
+      const updated = { ...v };
+      if (currentField) updated[currentField] = Math.max(0, (updated[currentField] || 0) - 1);
+      if (nextField) updated[nextField] = (updated[nextField] || 0) + 1;
+      return updated;
+    }));
     if (!user || isDemoId(id)) return;
-    const lid = `${user.uid}_${id}`;
+    const rid = `${user.uid}_${id}`;
     try {
-      if (isLiked) { await deleteDoc(doc(db, "video_likes", lid)); await updateDoc(doc(db, "videos", id), { likes_count: increment(-1) }); }
-      else {
-        await setDoc(doc(db, "video_likes", lid), { user_id: user.uid, video_id: id, created_at: serverTimestamp() });
-        await updateDoc(doc(db, "videos", id), { likes_count: increment(1) });
+      const updates = {};
+      if (currentField) updates[currentField] = increment(-1);
+      if (nextField) updates[nextField] = increment(1);
+      if (Object.keys(updates).length) await updateDoc(doc(db, "videos", id), updates);
+      if (next) {
+        await setDoc(doc(db, "video_reactions", rid), { user_id: user.uid, video_id: id, reaction: next, created_at: serverTimestamp(), updated_at: serverTimestamp() });
         if (video?.creator_id && video.creator_id !== user.uid) {
-          await addDoc(collection(db, "notifications"), {
-            user_id: video.creator_id,
-            actor_id: user.uid,
+          await createNotification({
+            userId: video.creator_id,
+            actorId: user.uid,
             type: "like",
-            video_id: id,
+            videoId: id,
             meta: video.caption?.slice(0, 80) || "your post",
-            read: false,
-            created_at: serverTimestamp(),
           });
         }
+      } else {
+        await deleteDoc(doc(db, "video_reactions", rid));
       }
-    } catch (err) { showNotice(err.message || "Could not update like."); }
+    } catch (err) { showNotice(err.message || "Could not update reaction."); }
+  };
+
+  const toggleLike = (id) => setReaction(id, "love");
+
+  const handleCardPointerDown = (video) => {
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => setQuickActions(video), 520);
+  };
+
+  const handleCardPointerUp = (video) => {
+    window.clearTimeout(pressTimer.current);
+    const now = Date.now();
+    if (now - (lastTap.current[video.id] || 0) < 320) {
+      toggleLike(video.id);
+      showNotice("Reacted to post.");
+    }
+    lastTap.current[video.id] = now;
   };
 
   const toggleSave = async (id) => {
     const isSaved = saved[id];
+    const video = allVideos.find(v => v.id === id);
     setSaved(p => ({ ...p, [id]: !isSaved }));
     setVideos(p => p.map(v => v.id === id ? { ...v, saves_count: Math.max(0, (v.saves_count || 0) + (isSaved ? -1 : 1)) } : v));
     if (!user || isDemoId(id)) return;
     const sid = `${user.uid}_${id}`;
     try {
       if (isSaved) { await deleteDoc(doc(db, "video_saves", sid)); await updateDoc(doc(db, "videos", id), { saves_count: increment(-1) }); }
-      else { await setDoc(doc(db, "video_saves", sid), { user_id: user.uid, video_id: id, created_at: serverTimestamp() }); await updateDoc(doc(db, "videos", id), { saves_count: increment(1) }); }
+      else {
+        await setDoc(doc(db, "video_saves", sid), { user_id: user.uid, video_id: id, created_at: serverTimestamp() });
+        await updateDoc(doc(db, "videos", id), { saves_count: increment(1) });
+        await createNotification({ userId: video?.creator_id, actorId: user.uid, type: "save", videoId: id, meta: video?.caption?.slice(0, 80) || "your post" });
+      }
     } catch (err) { showNotice(err.message || "Could not update save."); }
-  };
-
-  const shareVideo = async (v) => {
-    try {
-      const msg = await shareItem({ title: "VioFashion post", text: v.caption || "Check out this VioFashion post" });
-      setVideos(p => p.map(item => item.id === v.id ? { ...item, shares_count: (item.shares_count || 0) + 1 } : item));
-      if (!isDemoId(v.id)) await updateDoc(doc(db, "videos", v.id), { shares_count: increment(1) });
-      showNotice(msg);
-    } catch (err) {
-      if (err.name !== "AbortError") showNotice("Sharing was cancelled.");
-    }
   };
 
   const toggleFollow = async (cid) => {
@@ -1476,9 +1673,9 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
           const [first, ...rest] = name.split(" "); const last = rest.join(" ");
           const pal = v.pal ?? (i % PALETTES.length);
           return (
-            <div key={v.id} className="feed-card">
+            <div key={v.id} className="feed-card" onPointerDown={() => handleCardPointerDown(v)} onPointerUp={() => handleCardPointerUp(v)} onPointerCancel={() => window.clearTimeout(pressTimer.current)}>
               <div className="feed-video-bg" style={{ background: v.thumbnail_url ? `url(${v.thumbnail_url}) center/cover no-repeat` : PALETTES[pal] }}>
-                {v.video_url && <video src={v.video_url} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} autoPlay muted loop playsInline />}
+                {v.video_url && <video src={v.video_url} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} autoPlay muted={muted[v.id] !== false} loop playsInline controls={muted[v.id] === false} />}
                 {!v.thumbnail_url && !v.video_url && (
                   <><div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.18 }}>
                     <svg width="160" height="280" viewBox="0 0 160 280" fill="none"><ellipse cx="80" cy="45" rx="30" ry="38" fill="rgba(255,255,255,0.7)" /><path d="M50 83 Q28 120 22 200 Q65 192 80 185 Q95 192 138 200 Q132 120 110 83 Q96 108 80 108 Q64 108 50 83Z" fill="rgba(255,255,255,0.5)" /><path d="M22 200 Q14 255 24 280 L55 265 L65 205 Q72 195 80 195 Q88 195 95 205 L105 265 L136 280 Q146 255 138 200Z" fill="rgba(255,255,255,0.4)" /></svg>
@@ -1493,10 +1690,10 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
                 <div className="feed-topbar-right"><button className="feed-icon-btn" onClick={onSearch}><IcoSearch /></button><button className="feed-icon-btn" onClick={onNotifications}><IcoBell /></button></div>
               </div>
               <div className="feed-action-tray">
-                <button className="feed-action" onClick={() => toggleLike(v.id)}><div className={`feed-action-circle ${liked[v.id] ? "lit" : ""}`}><IcoHeart lit={liked[v.id]} /></div><span className="feed-action-num">{fmt(v.likes_count)}</span></button>
+                <button className="feed-action" onClick={() => toggleLike(v.id)}><div className={`feed-action-circle ${reactions[v.id] ? "lit" : ""}`}>{reactions[v.id] && reactions[v.id] !== "love" ? reactionById(reactions[v.id]).icon : <IcoHeart lit={!!reactions[v.id]} />}</div><span className="feed-action-num">{fmt(v.likes_count)}</span></button>
                 <button className="feed-action" onClick={() => setCommentVideo(v)}><div className="feed-action-circle"><IcoComment /></div><span className="feed-action-num">{fmt(v.comments_count)}</span></button>
                 <button className="feed-action" onClick={() => toggleSave(v.id)}><div className={`feed-action-circle ${saved[v.id] ? "lit" : ""}`}><IcoBookmark /></div><span className="feed-action-num">{fmt(v.saves_count || 0)}</span></button>
-                <button className="feed-action" onClick={() => shareVideo(v)}><div className="feed-action-circle"><IcoShare /></div><span className="feed-action-num">{fmt(v.shares_count || 0)}</span></button>
+                <button className="feed-action" onClick={() => setShareVideoItem(v)}><div className="feed-action-circle"><IcoShare /></div><span className="feed-action-num">{fmt(v.shares_count || 0)}</span></button>
               </div>
               <div className="feed-editorial">
                 <div className="feed-creator-giant">{first} <span>{last}</span></div>
@@ -1509,7 +1706,7 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
                 </div>
                 {v.caption && <p className="feed-caption">{v.caption}</p>}
                 {v.tags?.length > 0 && <div className="feed-tags">{v.tags.map(t => <span key={t} className="feed-tag">{t.startsWith("#") ? t : `#${t}`}</span>)}</div>}
-                {v.sound_name && <div className="feed-sound-row"><div className="feed-vinyl" /><IcoMusic /><span className="feed-sound-text">{v.sound_name}</span></div>}
+                <div className="feed-sound-row" onClick={() => setMuted(p => ({ ...p, [v.id]: p[v.id] === false }))} style={{ cursor: v.video_url ? "pointer" : "default" }}><div className="feed-vinyl" /><IcoMusic /><span className="feed-sound-text">{v.video_url ? (muted[v.id] === false ? "Sound on" : "Tap for sound") : (v.sound_name || "No sound")}{v.sound_name ? ` · ${v.sound_name}` : ""}</span></div>
               </div>
             </div>
           );
@@ -1517,6 +1714,23 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
       </div>
       {notice && <div style={{ position: "absolute", left: 20, right: 20, bottom: 92, zIndex: 250, background: "rgba(21,14,32,0.94)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "11px 14px", color: "var(--gold-lt)", fontSize: 12, textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>{notice}</div>}
       {commentVideo && <CommentsModal video={commentVideo} user={user} onClose={() => setCommentVideo(null)} />}
+      {shareVideoItem && <ShareSheet video={shareVideoItem} user={user} onClose={() => setShareVideoItem(null)} onShared={msg => showNotice(msg)} />}
+      {quickActions && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setQuickActions(null)}>
+          <div className="modal-sheet">
+            <div className="sheet-handle" />
+            <div className="sheet-inner">
+              <div className="sheet-title">Post Actions</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "space-between", marginBottom: 18 }}>
+                {REACTIONS.map(r => <button key={r.id} onClick={() => { setReaction(quickActions.id, r.id); setQuickActions(null); }} style={{ flex: 1, background: reactions[quickActions.id] === r.id ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 6px", color: "var(--white)", cursor: "pointer" }} title={r.label}>{r.icon}</button>)}
+              </div>
+              <button className="modal-submit" onClick={() => { setShareVideoItem(quickActions); setQuickActions(null); }}>Share Post</button>
+              <button className="modal-cancel" onClick={() => { toggleSave(quickActions.id); setQuickActions(null); }}>{saved[quickActions.id] ? "Remove Save" : "Save Post"}</button>
+              <button className="modal-cancel" onClick={() => { setShareVideoItem(quickActions); setQuickActions(null); }}>Download / Send</button>
+            </div>
+          </div>
+        </div>
+      )}
       {viewCreator && <CreatorProfileModal creatorId={viewCreator} currentUser={user} onClose={() => setViewCreator(null)} onStartChat={conv => { setViewCreator(null); onStartChat?.(conv); }} />}
     </div>
   );
@@ -1740,6 +1954,7 @@ function MarketScreen({ user, profile }) {
 
   const uploadReqImage = async (file) => {
     if (!file || !user) return null;
+    if (file.size > MAX_UPLOAD_BYTES) return null;
     setUploadingImg(true);
     const ext = file.name.split(".").pop();
     const path = `request-images/${user.uid}/${Date.now()}.${ext}`;
@@ -1761,13 +1976,19 @@ function MarketScreen({ user, profile }) {
   const post = async () => {
     if (!form.title || !user) return;
     setPosting(true);
-    await addDoc(collection(db, "requests"), {
+    const reqRef = await addDoc(collection(db, "requests"), {
       customer_id: user.uid, category: form.category,
       title: form.title, description: form.description,
       budget: form.budget ? parseFloat(form.budget) : null,
       currency: "GHS", is_urgent: form.isUrgent,
       images: reqImages, status: "open", bids_count: 0,
       created_at: serverTimestamp(), updated_at: serverTimestamp(),
+    });
+    await notifyCreators({
+      actorId: user.uid,
+      type: "commission",
+      requestId: reqRef.id,
+      meta: form.title,
     });
     setForm({ title: "", description: "", category: "Tailoring", budget: "", isUrgent: false });
     setReqImages([]); setModal(false); load(); setPosting(false);
@@ -1849,9 +2070,15 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const [messages, setMessages] = useState([]);
   const [msg, setMsg]           = useState("");
   const [queryStr, setQueryStr] = useState("");
+  const [userQuery, setUserQuery] = useState("");
+  const [userResults, setUserResults] = useState([]);
   const [callNotice, setCallNotice] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [voiceUploading, setVoiceUploading] = useState(false);
   const [loading, setLoading]   = useState(true);
   const endRef = useRef();
+  const recorderRef = useRef(null);
+  const voiceChunksRef = useRef([]);
 
   useEffect(() => {
     if (pendingConv && !loading) { setOpen(pendingConv); onConvOpened?.(); }
@@ -1889,11 +2116,91 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     return unsub;
   }, [open]);
 
+  useEffect(() => {
+    if (!user) return;
+    const needle = userQuery.trim().toLowerCase();
+    if (!needle) { setUserResults([]); return; }
+    const t = window.setTimeout(async () => {
+      const snap = await getDocs(query(collection(db, "profiles"), limit(120)));
+      setUserResults(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.id !== user.uid)
+        .filter(p => (p.full_name || "").toLowerCase().includes(needle) || (p.username || "").toLowerCase().includes(needle))
+        .slice(0, 10));
+    }, 220);
+    return () => window.clearTimeout(t);
+  }, [userQuery, user]);
+
+  const messageRecipientId = (conv) => conv?.participants?.find(id => id !== user?.uid) || (conv?.participant1 === user?.uid ? conv?.participant2 : conv?.participant1);
+
+  const sendMessage = async (content, extra = {}) => {
+    if (!content?.trim() || !open || !user) return;
+    const clean = content.trim();
+    await addDoc(collection(db, "messages"), {
+      conversation_id: open.id,
+      sender_id: user.uid,
+      content: clean,
+      type: extra.type || "text",
+      audio_url: extra.audio_url || null,
+      created_at: serverTimestamp(),
+    });
+    await updateDoc(doc(db, "conversations", open.id), { last_message: extra.type === "voice" ? "Voice note" : clean, last_message_at: serverTimestamp() });
+    await createNotification({ userId: messageRecipientId(open), actorId: user.uid, type: "message", conversationId: open.id, meta: clean.slice(0, 100) });
+  };
+
   const send = async () => {
-    if (!msg.trim() || !open || !user) return;
+    if (!msg.trim()) return;
     const c = msg; setMsg("");
-    await addDoc(collection(db, "messages"), { conversation_id: open.id, sender_id: user.uid, content: c, created_at: serverTimestamp() });
-    await updateDoc(doc(db, "conversations", open.id), { last_message: c, last_message_at: serverTimestamp() });
+    await sendMessage(c);
+  };
+
+  const startConversation = async (person) => {
+    if (!user || !person?.id) return;
+    const conv = await getOrCreateConversation(user.uid, person.id);
+    setOpen({ ...conv, other: person, participants: [user.uid, person.id] });
+    setUserQuery("");
+    setUserResults([]);
+  };
+
+  const uploadVoiceNote = async (blob) => {
+    if (!user || !open) return;
+    if (blob.size > MAX_UPLOAD_BYTES) { setCallNotice(`Voice note must be ${MAX_UPLOAD_LABEL} or smaller.`); return; }
+    setVoiceUploading(true);
+    const path = `voice-notes/${user.uid}/${Date.now()}.webm`;
+    const task = uploadBytesResumable(sRef(storage, path), blob, { contentType: blob.type || "audio/webm" });
+    task.on("state_changed", null, (error) => {
+      setCallNotice(storageErrorMessage(error));
+      setVoiceUploading(false);
+    }, async () => {
+      const url = await getDownloadURL(task.snapshot.ref);
+      await sendMessage("Voice note", { type: "voice", audio_url: url });
+      setVoiceUploading(false);
+    });
+  };
+
+  const toggleRecording = async () => {
+    if (recording) {
+      recorderRef.current?.stop();
+      setRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = e => e.data?.size && voiceChunksRef.current.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
+        uploadVoiceNote(blob);
+      };
+      recorder.start();
+      setRecording(true);
+    } catch {
+      setCallNotice("Microphone permission is needed for voice notes.");
+      window.setTimeout(() => setCallNotice(""), 2400);
+    }
   };
 
   const visibleConvs = queryStr.trim()
@@ -1907,8 +2214,19 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
 
   return (
     <div className="chat-outer">
-      <div className="chat-head"><div className="chat-head-title">Messages</div><div className="chat-search-bar"><IcoSearch /><input placeholder="Search conversations..." value={queryStr} onChange={e => setQueryStr(e.target.value)} /></div></div>
+      <div className="chat-head"><div className="chat-head-title">Messages</div><div className="chat-search-bar"><IcoSearch /><input placeholder="Search conversations..." value={queryStr} onChange={e => setQueryStr(e.target.value)} /></div><div className="chat-search-bar" style={{ marginTop: 10 }}><IcoPlus /><input placeholder="Find users to message..." value={userQuery} onChange={e => setUserQuery(e.target.value)} /></div></div>
       <div className="chat-list-area">
+        {userResults.length > 0 && (
+          <div style={{ padding: "0 20px 12px" }}>
+            <div className="search-section-label">Start Chat</div>
+            {userResults.map((p, i) => (
+              <div key={p.id} className="chat-row" onClick={() => startConversation(p)}>
+                <div className="chat-av" style={{ background: PALETTES[i % PALETTES.length] }}>{p.avatar_url ? <img src={p.avatar_url} alt="" /> : initials(p.full_name || p.username)}</div>
+                <div className="chat-row-content"><div className="chat-row-top"><span className="chat-row-name">{p.full_name || p.username}</span></div><div className="chat-row-preview">@{p.username}</div></div>
+              </div>
+            ))}
+          </div>
+        )}
         {loading && <Spinner />}
         {!loading && convs.length === 0 && <div className="empty-state"><div className="empty-icon">💬</div><div className="empty-title">No messages yet</div><div className="empty-sub">Start a conversation from a creator's profile</div></div>}
         {!loading && convs.length > 0 && visibleConvs.length === 0 && <div className="empty-state"><div className="empty-icon">🔎</div><div className="empty-title">No matches</div><div className="empty-sub">Try another conversation search</div></div>}
@@ -1927,7 +2245,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
       </div>
       {open && (() => {
         const o = open.other;
-        const pal = convs.findIndex(c => c.id === open.id) % PALETTES.length;
+        const pal = Math.max(0, convs.findIndex(c => c.id === open.id)) % PALETTES.length;
         return (
           <div className="chat-window open">
             <div className="chat-win-head">
@@ -1943,7 +2261,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
                 return (
                   <div key={m.id} className={`msg-wrap ${isOut ? "out" : "inc"}`}>
                     {!isOut && <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, alignSelf: "flex-end", background: PALETTES[pal], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{initials(o?.full_name || o?.username)}</div>}
-                    <div><div className="msg-bubble">{m.content}</div><div className="msg-time">{timeAgo(m.created_at)}</div></div>
+                    <div><div className="msg-bubble">{m.type === "voice" && m.audio_url ? <audio controls src={m.audio_url} style={{ width: 180 }} /> : m.content}</div><div className="msg-time">{timeAgo(m.created_at)}</div></div>
                   </div>
                 );
               })}
@@ -1951,8 +2269,10 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
             </div>
             <div className="chat-inp-bar">
               <input className="chat-inp" placeholder="Write a message…" value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
+              <button className="chat-send" onClick={toggleRecording} title="Voice note" style={recording ? { background: "linear-gradient(135deg,#DC2626,#B91C1C)" } : null}>{recording ? "■" : "🎙"}</button>
               <button className="chat-send" onClick={send}><IcoSend /></button>
             </div>
+            {voiceUploading && <div style={{ position: "absolute", bottom: 78, left: 16, right: 16, fontSize: 11, color: "var(--gold-lt)", textAlign: "center" }}>Uploading voice note...</div>}
           </div>
         );
       })()}
@@ -1973,8 +2293,11 @@ function LiveScreen({ user, profile }) {
   const [notice, setNotice]       = useState("");
   const [showGoLive, setShowGoLive] = useState(false);
   const [activeStream, setActiveStream] = useState(null);
+  const [localStream, setLocalStream] = useState(null);
+  const liveVideoRef = useRef(null);
   const isCreator = CREATOR_ROLES.includes(profile?.role);
   const doubled   = [...ticker, ...ticker];
+  const showNotice = useCallback((msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2200); }, []);
 
   useEffect(() => { const t = setInterval(() => setViewers(v => v + Math.floor(Math.random() * 8 - 2)), 2200); return () => clearInterval(t); }, []);
   useEffect(() => {
@@ -1995,9 +2318,25 @@ function LiveScreen({ user, profile }) {
     }, (error) => console.error("Failed to load live chat", error));
     return unsub;
   }, [activeStream?.id]);
+  useEffect(() => {
+    if (!activeStream || activeStream.creator_id !== user?.uid) return;
+    let mounted = true;
+    let currentStream = null;
+    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        if (!mounted) return;
+        currentStream = stream;
+        setLocalStream(stream);
+        if (liveVideoRef.current) liveVideoRef.current.srcObject = stream;
+      })
+      .catch(() => showNotice("Camera and microphone permission are needed to broadcast."));
+    return () => {
+      mounted = false;
+      currentStream?.getTracks?.().forEach(track => track.stop());
+    };
+  }, [activeStream, user?.uid, showNotice]);
 
-  const handleEndLive = async () => { if (!activeStream) return; await endLiveStream(activeStream.id); setActiveStream(null); };
-  const showNotice = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2200); };
+  const handleEndLive = async () => { if (!activeStream) return; localStream?.getTracks?.().forEach(track => track.stop()); setLocalStream(null); await endLiveStream(activeStream.id); setActiveStream(null); };
   const sendLiveChat = async () => {
     const content = chatMsg.trim();
     if (!content) return;
@@ -2021,6 +2360,7 @@ function LiveScreen({ user, profile }) {
   return (
     <div className="live-outer">
       <div className="live-bg" style={{ background: PALETTES[2] }}><div style={{ position: "absolute", inset: 0, opacity: 0.13, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontFamily: "var(--ff-impact)", fontSize: 220, color: "#fff", letterSpacing: -10 }}>LIVE</span></div></div>
+      {activeStream?.creator_id === user?.uid && <video ref={liveVideoRef} autoPlay muted playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 1 }} />}
       <div className="live-cinema" />
       <div className="live-top">
         <div className="live-pill"><div className="live-dot" />{activeStream ? "You're Live" : "Live"}</div>

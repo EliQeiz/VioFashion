@@ -16,11 +16,16 @@ service firebase.storage {
     }
 
     function validMedia() {
-      return request.resource.size < 100 * 1024 * 1024
+      return request.resource.size < 10 * 1024 * 1024
         && (
           request.resource.contentType.matches('image/.*')
           || request.resource.contentType.matches('video/.*')
         );
+    }
+
+    function validAudio() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
     }
 
     match /avatars/{userId}/{fileName} {
@@ -41,6 +46,11 @@ service firebase.storage {
     match /request-images/{userId}/{fileName} {
       allow read: if true;
       allow write: if isOwner(userId) && validImage();
+    }
+
+    match /voice-notes/{userId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if isOwner(userId) && validAudio();
     }
   }
 }
