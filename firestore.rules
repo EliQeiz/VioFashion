@@ -109,5 +109,11 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.creator_id == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.creator_id == request.auth.uid;
     }
+
+    match /livestream_messages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }

@@ -489,6 +489,32 @@ async function shareItem({ title = "VioFashion", text = "Check this out on VioFa
   return "Link copied to clipboard.";
 }
 
+function storageErrorMessage(error) {
+  const code = error?.code || "";
+  if (code === "storage/unauthorized") return "Upload blocked by Firebase Storage rules. Publish the latest storage.rules and make sure you are signed in.";
+  if (code === "storage/canceled") return "Upload cancelled.";
+  if (code === "storage/quota-exceeded") return "Firebase Storage quota has been exceeded.";
+  if (code === "storage/retry-limit-exceeded") return "Network upload timed out. Please try again on a stronger connection.";
+  if (code === "storage/invalid-checksum") return "The upload was corrupted in transit. Please try again.";
+  return error?.message || "Upload failed.";
+}
+
+function cleanFileExt(file) {
+  const fromName = file?.name?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (fromName) return fromName.slice(0, 12);
+  if (file?.type?.includes("/")) return file.type.split("/").pop().replace(/[^a-z0-9]/g, "") || "bin";
+  return "bin";
+}
+
+async function findMentionedProfiles(text, currentUid) {
+  const handles = [...new Set((text.match(/@([a-zA-Z0-9_.-]{2,30})/g) || []).map(v => v.slice(1).toLowerCase()))];
+  if (!handles.length) return [];
+  const snap = await getDocs(query(collection(db, "profiles"), limit(200)));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(p => p.id !== currentUid && handles.includes(String(p.username || "").toLowerCase()));
+}
+
 const DEMO_VIDEOS = [
   { id: "d1", creator: { id: "x1", username: "amara.creates", full_name: "Amara Osei" }, caption: "Custom kente agbada — every thread tells a story.", tags: ["#KenteFashion", "#BespokeTailor", "#GhanaFashion"], sound_name: "Afrobeats Gold Vol. 3", likes_count: 18400, comments_count: 892, shares_count: 3100, saves_count: 1200, pal: 0 },
   { id: "d2", creator: { id: "x2", username: "nanadesigns", full_name: "Nana Kwame" }, caption: "Behind the cut. A bespoke three-piece from raw cloth to runway.", tags: ["#SuitMaking", "#BespokeTailor", "#AccraStyle"], sound_name: "Studio Ambience", likes_count: 11200, comments_count: 445, shares_count: 1800, saves_count: 890, pal: 1 },
@@ -543,16 +569,29 @@ function UploadModal({ user, onClose, onSuccess }) {
     setPreview(URL.createObjectURL(f));
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!file || !user) { setError("Please select a file first."); return; }
     setUploading(true); setError(""); setProgress(0);
 
-    const ext      = file.name.split(".").pop();
+    const ext      = cleanFileExt(file);
     const isVideo  = file.type.startsWith("video/");
     const bucket   = isVideo ? "videos" : "portfolio";
-    const path     = `${bucket}/${user.uid}/${Date.now()}.${ext}`;
+    const postRef  = doc(collection(db, "videos"));
+    const path     = `${bucket}/${user.uid}/${postRef.id}.${ext}`;
     const fileRef2 = sRef(storage, path);
-    const task     = uploadBytesResumable(fileRef2, file);
+    try {
+      await user.getIdToken?.(true);
+    } catch {
+      // Firebase will still refresh automatically during the upload if needed.
+    }
+    const task     = uploadBytesResumable(fileRef2, file, {
+      contentType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
+      customMetadata: {
+        owner: user.uid,
+        postId: postRef.id,
+        originalName: file.name || "upload",
+      },
+    });
 
     // ✅ Real byte-level progress — no fake timers
     task.on(
@@ -561,7 +600,7 @@ function UploadModal({ user, onClose, onSuccess }) {
         setProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
       },
       (err) => {
-        setError(err.message || "Upload failed.");
+        setError(storageErrorMessage(err));
         setProgress(0);
         setUploading(false);
       },
@@ -569,21 +608,35 @@ function UploadModal({ user, onClose, onSuccess }) {
         try {
           const url      = await getDownloadURL(task.snapshot.ref);
           const tagArr   = tags.split(/[\s,]+/).filter(t => t).map(t => t.startsWith("#") ? t : `#${t}`);
-          await addDoc(collection(db, "videos"), {
+          const mentioned = await findMentionedProfiles(`${caption} ${tags}`, user.uid);
+          await setDoc(postRef, {
             creator_id:    user.uid,
             video_url:     isVideo ? url : null,
             thumbnail_url: !isVideo ? url : null,
+            media_url:     url,
+            media_type:    isVideo ? "video" : "image",
+            storage_path:  path,
             caption:       caption.trim() || null,
             tags:          tagArr,
+            tagged_user_ids: mentioned.map(p => p.id),
             sound_name:    soundName.trim() || null,
             is_published:  true,
             likes_count: 0, comments_count: 0, shares_count: 0, saves_count: 0, views_count: 0,
             created_at:    serverTimestamp(),
           });
+          await Promise.all(mentioned.map(p => addDoc(collection(db, "notifications"), {
+            user_id: p.id,
+            actor_id: user.uid,
+            type: "tag",
+            video_id: postRef.id,
+            meta: caption.trim().slice(0, 120) || "tagged you in a post",
+            read: false,
+            created_at: serverTimestamp(),
+          })));
           setProgress(100); setDone(true);
           setTimeout(() => { onSuccess(); onClose(); }, 1800);
         } catch (err) {
-          setError(err.message || "Failed to save post.");
+          setError(err.message || "Upload finished, but saving the post failed.");
           setUploading(false);
         }
       }
@@ -778,6 +831,17 @@ function CommentsModal({ video, user, onClose }) {
           created_at: serverTimestamp(),
         });
         if (video.id) await updateDoc(doc(db, "videos", video.id), { comments_count: increment(1) });
+        if (video.creator_id && video.creator_id !== user.uid) {
+          await addDoc(collection(db, "notifications"), {
+            user_id: video.creator_id,
+            actor_id: user.uid,
+            type: "comment",
+            video_id: video.id,
+            meta: content.slice(0, 120),
+            read: false,
+            created_at: serverTimestamp(),
+          });
+        }
       }
     } finally {
       setSending(false);
@@ -1013,6 +1077,7 @@ function NotificationsScreen({ user }) {
     like:    { icon: "❤️", cls: "notif-type-like",    text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> liked your post{n.meta ? ` ${n.meta}` : ""}</> },
     follow:  { icon: "👤", cls: "notif-type-follow",  text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> started following you</> },
     comment: { icon: "💬", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> commented: "{n.meta}"</> },
+    tag:     { icon: "@", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> tagged you in a post</> },
     offer:   { icon: "🧵", cls: "notif-type-offer",   text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> made an offer on "{n.meta}"</> },
   };
   return (
@@ -1069,8 +1134,8 @@ function SearchScreen({ user, profile, onStartChat }) {
         </div>
       </div>
       <div className="search-results">
-        {!queryStr && <div className="search-empty"><div className="search-empty-icon">🔍</div><div className="search-empty-text">Find your style</div><div className="search-empty-sub">Search for creators, tailors, designers, or open commissions</div></div>}
-        {queryStr && loading && <Spinner />}
+        {loading && <Spinner />}
+        {!queryStr && !loading && !hasResults && <div className="search-empty"><div className="search-empty-icon">🔍</div><div className="search-empty-text">Find your style</div><div className="search-empty-sub">Search for creators, tailors, designers, or open commissions</div></div>}
         {queryStr && !loading && !hasResults && <div className="search-empty"><div className="search-empty-icon">🧵</div><div className="search-empty-text">No results</div><div className="search-empty-sub">Try a different search term</div></div>}
         {results.creators.length > 0 && (<>
           <div className="search-section-label">Creators</div>
@@ -1144,11 +1209,20 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
     if (followed) {
       await deleteDoc(doc(db, "follows", fid));
       await updateDoc(doc(db, "profiles", creatorId), { followers_count: increment(-1) });
+      await updateDoc(doc(db, "profiles", currentUser.uid), { following_count: increment(-1) });
       setProfile(p => p ? { ...p, followers_count: Math.max(0, (p.followers_count || 0) - 1) } : p);
       setFollowed(false);
     } else {
       await setDoc(doc(db, "follows", fid), { follower_id: currentUser.uid, following_id: creatorId, created_at: serverTimestamp() });
       await updateDoc(doc(db, "profiles", creatorId), { followers_count: increment(1) });
+      await updateDoc(doc(db, "profiles", currentUser.uid), { following_count: increment(1) });
+      await addDoc(collection(db, "notifications"), {
+        user_id: creatorId,
+        actor_id: currentUser.uid,
+        type: "follow",
+        read: false,
+        created_at: serverTimestamp(),
+      });
       setProfile(p => p ? { ...p, followers_count: (p.followers_count || 0) + 1 } : p);
       setFollowed(true);
     }
@@ -1319,13 +1393,28 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
 
   const toggleLike = async (id) => {
     const isLiked = liked[id];
+    const video = allVideos.find(v => v.id === id);
     setLiked(p => ({ ...p, [id]: !isLiked }));
     setVideos(p => p.map(v => v.id === id ? { ...v, likes_count: Math.max(0, (v.likes_count || 0) + (isLiked ? -1 : 1)) } : v));
     if (!user || isDemoId(id)) return;
     const lid = `${user.uid}_${id}`;
     try {
       if (isLiked) { await deleteDoc(doc(db, "video_likes", lid)); await updateDoc(doc(db, "videos", id), { likes_count: increment(-1) }); }
-      else { await setDoc(doc(db, "video_likes", lid), { user_id: user.uid, video_id: id, created_at: serverTimestamp() }); await updateDoc(doc(db, "videos", id), { likes_count: increment(1) }); }
+      else {
+        await setDoc(doc(db, "video_likes", lid), { user_id: user.uid, video_id: id, created_at: serverTimestamp() });
+        await updateDoc(doc(db, "videos", id), { likes_count: increment(1) });
+        if (video?.creator_id && video.creator_id !== user.uid) {
+          await addDoc(collection(db, "notifications"), {
+            user_id: video.creator_id,
+            actor_id: user.uid,
+            type: "like",
+            video_id: id,
+            meta: video.caption?.slice(0, 80) || "your post",
+            read: false,
+            created_at: serverTimestamp(),
+          });
+        }
+      }
     } catch (err) { showNotice(err.message || "Could not update like."); }
   };
 
@@ -1362,9 +1451,18 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
       if (isF) {
         await deleteDoc(doc(db, "follows", fid));
         await updateDoc(doc(db, "profiles", cid), { followers_count: increment(-1) });
+        await updateDoc(doc(db, "profiles", user.uid), { following_count: increment(-1) });
       } else {
         await setDoc(doc(db, "follows", fid), { follower_id: user.uid, following_id: cid, created_at: serverTimestamp() });
         await updateDoc(doc(db, "profiles", cid), { followers_count: increment(1) });
+        await updateDoc(doc(db, "profiles", user.uid), { following_count: increment(1) });
+        await addDoc(collection(db, "notifications"), {
+          user_id: cid,
+          actor_id: user.uid,
+          type: "follow",
+          read: false,
+          created_at: serverTimestamp(),
+        });
       }
     } catch (err) { showNotice(err.message || "Could not update follow."); }
   };
@@ -1879,14 +1977,41 @@ function LiveScreen({ user, profile }) {
   const doubled   = [...ticker, ...ticker];
 
   useEffect(() => { const t = setInterval(() => setViewers(v => v + Math.floor(Math.random() * 8 - 2)), 2200); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const q = query(collection(db, "livestreams"), where("is_active", "==", true), orderBy("created_at", "desc"), limit(1));
+    const unsub = onSnapshot(q, (snap) => {
+      if (activeStream?.creator_id === user?.uid) return;
+      const stream = snap.docs[0] ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
+      if (stream) setActiveStream(stream);
+    }, (error) => console.error("Failed to load live streams", error));
+    return unsub;
+  }, [activeStream?.creator_id, user?.uid]);
+  useEffect(() => {
+    if (!activeStream?.id) return;
+    const q = query(collection(db, "livestream_messages"), where("stream_id", "==", activeStream.id), orderBy("created_at", "desc"), limit(12));
+    const unsub = onSnapshot(q, (snap) => {
+      const rows = snap.docs.map(d => d.data()).map(m => ({ user: m.username || "Viewer", msg: m.content || "" }));
+      if (rows.length) setTicker(rows);
+    }, (error) => console.error("Failed to load live chat", error));
+    return unsub;
+  }, [activeStream?.id]);
 
   const handleEndLive = async () => { if (!activeStream) return; await endLiveStream(activeStream.id); setActiveStream(null); };
   const showNotice = (msg) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2200); };
-  const sendLiveChat = () => {
+  const sendLiveChat = async () => {
     const content = chatMsg.trim();
     if (!content) return;
     setTicker(p => [{ user: profile?.username || profile?.full_name || "You", msg: content }, ...p].slice(0, 8));
     setChatMsg("");
+    if (activeStream?.id && user?.uid) {
+      await addDoc(collection(db, "livestream_messages"), {
+        stream_id: activeStream.id,
+        author_id: user.uid,
+        username: profile?.username || profile?.full_name || user.email?.split("@")[0] || "Viewer",
+        content,
+        created_at: serverTimestamp(),
+      });
+    }
   };
   const shareLive = async () => {
     try { showNotice(await shareItem({ title: "VioFashion Runway", text: "Join this VioFashion live runway." })); }

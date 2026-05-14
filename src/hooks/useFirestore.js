@@ -267,38 +267,43 @@ export function useSearch(queryStr, type = "all") {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (!queryStr || queryStr.length < 2) {
-      setResults({ creators: [], requests: [] });
-      return;
-    }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       setLoading(true);
-      const q = queryStr.toLowerCase();
+      const q = queryStr.trim().toLowerCase();
+      const hasQuery = q.length >= 2;
 
       const [pSnap, rSnap] = await Promise.all([
         type !== "requests"
-          ? getDocs(query(col("profiles"), limit(80)))
+          ? getDocs(query(col("profiles"), limit(150)))
           : { docs: [] },
         type !== "creators"
           ? getDocs(query(col("requests"), where("status", "==", "open"),
-              orderBy("created_at", "desc"), limit(60)))
+              orderBy("created_at", "desc"), limit(80)))
           : { docs: [] },
       ]);
 
       const creators = snaps(pSnap)
-        .filter(p => (p.username || "").toLowerCase().includes(q) ||
-                     (p.full_name || "").toLowerCase().includes(q))
-        .slice(0, 12);
+        .filter(p => !hasQuery ||
+          (p.username || "").toLowerCase().includes(q) ||
+          (p.full_name || "").toLowerCase().includes(q) ||
+          (p.role || "").toLowerCase().includes(q) ||
+          (p.location || "").toLowerCase().includes(q) ||
+          (p.services || []).some(s => String(s).toLowerCase().includes(q))
+        )
+        .slice(0, hasQuery ? 24 : 30);
 
       const requests = snaps(rSnap)
-        .filter(r => (r.title || "").toLowerCase().includes(q) ||
-                     (r.description || "").toLowerCase().includes(q))
-        .slice(0, 10);
+        .filter(r => !hasQuery ||
+          (r.title || "").toLowerCase().includes(q) ||
+          (r.description || "").toLowerCase().includes(q) ||
+          (r.category || "").toLowerCase().includes(q)
+        )
+        .slice(0, hasQuery ? 16 : 12);
 
       setResults({ creators, requests });
       setLoading(false);
-    }, 320);
+    }, queryStr.trim().length ? 260 : 80);
 
     return () => clearTimeout(timerRef.current);
   }, [queryStr, type]);
