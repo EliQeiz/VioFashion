@@ -489,6 +489,7 @@ const REACTIONS = [
   { id: "angry", label: "Angry", icon: "😡", countField: "angry_count" },
 ];
 const reactionById = (id) => REACTIONS.find(r => r.id === id) || REACTIONS[0];
+const QUICK_EMOJIS = ["❤️", "🔥", "👏", "😍", "😂", "😊", "😮", "🙏", "✨", "💯"];
 
 async function shareItem({ title = "VioFashion", text = "Check this out on VioFashion", url = window.location.href } = {}) {
   if (navigator.share) {
@@ -500,18 +501,23 @@ async function shareItem({ title = "VioFashion", text = "Check this out on VioFa
 }
 
 async function createNotification({ userId, actorId, type, meta = null, videoId = null, requestId = null, conversationId = null }) {
-  if (!userId || userId === actorId) return null;
-  return addDoc(collection(db, "notifications"), {
-    user_id: userId,
-    actor_id: actorId,
-    type,
-    meta,
-    video_id: videoId,
-    request_id: requestId,
-    conversation_id: conversationId,
-    read: false,
-    created_at: serverTimestamp(),
-  });
+  if (!userId || !actorId) return null;
+  try {
+    return await addDoc(collection(db, "notifications"), {
+      user_id: userId,
+      actor_id: actorId,
+      type,
+      meta,
+      video_id: videoId,
+      request_id: requestId,
+      conversation_id: conversationId,
+      read: false,
+      created_at: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Failed to create notification", error);
+    return null;
+  }
 }
 
 async function notifyCreators({ actorId, type, meta, requestId }) {
@@ -917,6 +923,9 @@ function CommentsModal({ video, user, onClose }) {
           </div>
         </div>
         {replyTo && <div style={{ padding: "8px 16px 0", fontSize: 11, color: "var(--gold-lt)" }}>Replying to {replyTo.author?.username || replyTo.author?.full_name || "comment"} <button onClick={() => setReplyTo(null)} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--muted)", cursor: "pointer" }}>Cancel</button></div>}
+        <div style={{ display: "flex", gap: 6, padding: "8px 16px 0", overflowX: "auto", scrollbarWidth: "none" }}>
+          {QUICK_EMOJIS.map(e => <button key={e} onClick={() => setText(p => `${p}${e}`)} style={{ width: 30, height: 30, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", cursor: "pointer" }}>{e}</button>)}
+        </div>
         <div className="comment-inp-bar">
           <input className="comment-inp" placeholder={replyTo ? "Write a reply..." : "Add a comment..."} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
           <button className="comment-send" onClick={send} disabled={sending}><IcoSend /></button>
@@ -1126,18 +1135,25 @@ function GoLiveModal({ user, profile, onClose, onLive }) {
 // ════════════════════════════════════════════════════════════
 function NotificationsScreen({ user }) {
   const { notifications, loading } = useNotifications(user?.uid);
+  useEffect(() => {
+    if (!user?.uid || notifications.length === 0) return;
+    notifications
+      .filter(n => !n.read)
+      .slice(0, 20)
+      .forEach(n => updateDoc(doc(db, "notifications", n.id), { read: true }).catch(() => {}));
+  }, [notifications, user?.uid]);
   const typeConfig = {
-    like:    { icon: "❤️", cls: "notif-type-like",    text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> liked your post{n.meta ? ` ${n.meta}` : ""}</> },
-    follow:  { icon: "👤", cls: "notif-type-follow",  text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> started following you</> },
-    comment: { icon: "💬", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> commented: "{n.meta}"</> },
-    reply:   { icon: "↩", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> replied: "{n.meta}"</> },
-    tag:     { icon: "@", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> tagged you in a post</> },
-    share:   { icon: "↗", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> shared {n.meta || "your post"}</> },
-    save:    { icon: "□", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> saved {n.meta || "your post"}</> },
-    message: { icon: "✉", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> sent you a message</> },
-    live:    { icon: "●", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> is live: "{n.meta}"</> },
-    commission: { icon: "✦", cls: "notif-type-offer", text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> posted a commission: "{n.meta}"</> },
-    offer:   { icon: "🧵", cls: "notif-type-offer",   text: n => <><strong>{n.actor?.full_name || n.actor?.username}</strong> made an offer on "{n.meta}"</> },
+    like:    { icon: "❤️", cls: "notif-type-like",    text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> liked your post{n.meta ? ` ${n.meta}` : ""}</> },
+    follow:  { icon: "👤", cls: "notif-type-follow",  text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> started following you</> },
+    comment: { icon: "💬", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> commented: "{n.meta}"</> },
+    reply:   { icon: "↩", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> replied: "{n.meta}"</> },
+    tag:     { icon: "@", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> tagged you in a post</> },
+    share:   { icon: "↗", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> shared {n.meta || "your post"}</> },
+    save:    { icon: "□", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> saved {n.meta || "your post"}</> },
+    message: { icon: "✉", cls: "notif-type-comment", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> sent you a message</> },
+    live:    { icon: "●", cls: "notif-type-like", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> is live: "{n.meta}"</> },
+    commission: { icon: "✦", cls: "notif-type-offer", text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> posted a commission: "{n.meta}"</> },
+    offer:   { icon: "🧵", cls: "notif-type-offer",   text: n => <><strong>{n.actor?.full_name || n.actor?.username || "Someone"}</strong> made an offer on "{n.meta}"</> },
   };
   return (
     <div className="notif-scroll">
@@ -1275,13 +1291,7 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
       await setDoc(doc(db, "follows", fid), { follower_id: currentUser.uid, following_id: creatorId, created_at: serverTimestamp() });
       await updateDoc(doc(db, "profiles", creatorId), { followers_count: increment(1) });
       await updateDoc(doc(db, "profiles", currentUser.uid), { following_count: increment(1) });
-      await addDoc(collection(db, "notifications"), {
-        user_id: creatorId,
-        actor_id: currentUser.uid,
-        type: "follow",
-        read: false,
-        created_at: serverTimestamp(),
-      });
+      await createNotification({ userId: creatorId, actorId: currentUser.uid, type: "follow" });
       setProfile(p => p ? { ...p, followers_count: (p.followers_count || 0) + 1 } : p);
       setFollowed(true);
     }
@@ -1290,7 +1300,7 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
   const handleMessage = async () => {
     if (!currentUser || !creatorId) return;
     if (isDemoCreatorId(creatorId)) return;
-    try { const conv = await getOrCreateConversation(currentUser.uid, creatorId); onStartChat(conv); onClose(); }
+    try { const conv = await getOrCreateConversation(currentUser.uid, creatorId); onStartChat({ ...conv, other: profile, participants: [currentUser.uid, creatorId] }); onClose(); }
     catch (err) { console.error(err); }
   };
 
@@ -1559,11 +1569,15 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   };
 
   const allVideos = videos.length > 0 ? videos : DEMO_VIDEOS;
+  const followedVideos = allVideos.filter(v => followed[v.creator?.id || v.creator_id] || v.creator_id === user?.uid);
   const display = tab === "following"
-    ? allVideos.filter(v => followed[v.creator?.id || v.creator_id] || v.creator_id === user?.uid)
+    ? (followedVideos.length ? followedVideos : allVideos)
     : tab === "trending"
       ? [...allVideos].sort((a, b) => ((b.likes_count || 0) + (b.happy_count || 0) + (b.wow_count || 0) + (b.comments_count || 0) + (b.shares_count || 0)) - ((a.likes_count || 0) + (a.happy_count || 0) + (a.wow_count || 0) + (a.comments_count || 0) + (a.shares_count || 0)))
       : allVideos;
+  const feedModeNotice = tab === "following" && followedVideos.length === 0 && allVideos.length > 0
+    ? "Follow creators to personalize this tab. Showing available posts for now."
+    : "";
 
   const setReaction = async (id, reactionId = "love") => {
     const current = reactions[id] || (liked[id] ? "love" : null);
@@ -1589,15 +1603,13 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
       if (Object.keys(updates).length) await updateDoc(doc(db, "videos", id), updates);
       if (next) {
         await setDoc(doc(db, "video_reactions", rid), { user_id: user.uid, video_id: id, reaction: next, created_at: serverTimestamp(), updated_at: serverTimestamp() });
-        if (video?.creator_id && video.creator_id !== user.uid) {
-          await createNotification({
-            userId: video.creator_id,
-            actorId: user.uid,
-            type: "like",
-            videoId: id,
-            meta: video.caption?.slice(0, 80) || "your post",
-          });
-        }
+        await createNotification({
+          userId: video?.creator_id || user.uid,
+          actorId: user.uid,
+          type: "like",
+          videoId: id,
+          meta: video?.caption?.slice(0, 80) || "your post",
+        });
       } else {
         await deleteDoc(doc(db, "video_reactions", rid));
       }
@@ -1653,13 +1665,7 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
         await setDoc(doc(db, "follows", fid), { follower_id: user.uid, following_id: cid, created_at: serverTimestamp() });
         await updateDoc(doc(db, "profiles", cid), { followers_count: increment(1) });
         await updateDoc(doc(db, "profiles", user.uid), { following_count: increment(1) });
-        await addDoc(collection(db, "notifications"), {
-          user_id: cid,
-          actor_id: user.uid,
-          type: "follow",
-          read: false,
-          created_at: serverTimestamp(),
-        });
+        await createNotification({ userId: cid, actorId: user.uid, type: "follow" });
       }
     } catch (err) { showNotice(err.message || "Could not update follow."); }
   };
@@ -1667,6 +1673,7 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   return (
     <div style={{ height: "100%" }}>
       <div className="feed-wrap">
+        {feedModeNotice && <div style={{ position: "absolute", top: 72, left: 18, right: 18, zIndex: 70, background: "rgba(21,14,32,0.88)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "9px 12px", color: "var(--gold-lt)", fontSize: 11, textAlign: "center" }}>{feedModeNotice}</div>}
         {display.length === 0 && <div className="empty-state" style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}><div className="empty-icon">✦</div><div className="empty-title">No posts here yet</div><div className="empty-sub">Follow creators or switch back to Discover</div></div>}
         {display.map((v, i) => {
           const name = v.creator?.full_name || v.creator?.username || "Creator";
@@ -2119,15 +2126,14 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   useEffect(() => {
     if (!user) return;
     const needle = userQuery.trim().toLowerCase();
-    if (!needle) { setUserResults([]); return; }
     const t = window.setTimeout(async () => {
       const snap = await getDocs(query(collection(db, "profiles"), limit(120)));
       setUserResults(snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(p => p.id !== user.uid)
-        .filter(p => (p.full_name || "").toLowerCase().includes(needle) || (p.username || "").toLowerCase().includes(needle))
-        .slice(0, 10));
-    }, 220);
+        .filter(p => !needle || (p.full_name || "").toLowerCase().includes(needle) || (p.username || "").toLowerCase().includes(needle))
+        .slice(0, needle ? 10 : 20));
+    }, needle ? 220 : 80);
     return () => window.clearTimeout(t);
   }, [userQuery, user]);
 
@@ -2266,6 +2272,9 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
                 );
               })}
               <div ref={endRef} />
+            </div>
+            <div style={{ display: "flex", gap: 6, padding: "8px 16px 0", overflowX: "auto", scrollbarWidth: "none", background: "rgba(6,4,9,0.6)" }}>
+              {QUICK_EMOJIS.map(e => <button key={e} onClick={() => setMsg(p => `${p}${e}`)} style={{ width: 30, height: 30, borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.04)", cursor: "pointer" }}>{e}</button>)}
             </div>
             <div className="chat-inp-bar">
               <input className="chat-inp" placeholder="Write a message…" value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />

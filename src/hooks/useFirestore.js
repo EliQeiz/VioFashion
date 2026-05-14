@@ -333,7 +333,7 @@ export async function getOrCreateConversation(uid1, uid2) {
     last_message_at: serverTimestamp(),
     created_at:      serverTimestamp(),
   });
-  return { id: ref.id, participant1: p1, participant2: p2 };
+  return { id: ref.id, participant1: p1, participant2: p2, participants: [p1, p2], last_message: null };
 }
 
 // ════════════════════════════════════════════════════════════
