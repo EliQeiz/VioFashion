@@ -33,6 +33,11 @@ service firebase.storage {
       allow write: if isOwner(userId) && validImage();
     }
 
+    match /banners/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && validImage();
+    }
+
     match /videos/{userId}/{fileName} {
       allow read: if true;
       allow write: if isOwner(userId) && validMedia();

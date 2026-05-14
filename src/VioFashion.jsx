@@ -53,15 +53,15 @@ const CSS = `
     --ff-impact:'Bebas Neue',sans-serif;
     --accent-grad:linear-gradient(135deg,var(--violet),#5B21B6);
   }
-  html,body,#root{height:100%;width:100%;}
-  body{background:var(--ink);color:var(--white);font-family:var(--ff-sans);overflow:hidden;-webkit-font-smoothing:antialiased;}
+  html,body,#root{height:100%;width:100%;overflow:hidden;overscroll-behavior:none;}
+  body{background:var(--ink);color:var(--white);font-family:var(--ff-sans);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;}
   ::-webkit-scrollbar{width:2px;}::-webkit-scrollbar-thumb{background:var(--violet);border-radius:2px;}
-  .shell{position:relative;width:100%;max-width:430px;height:100vh;margin:0 auto;background:var(--deep);overflow:hidden;box-shadow:0 0 120px rgba(109,40,217,0.25);}
+  .shell{position:relative;width:100%;max-width:430px;height:100dvh;min-height:100dvh;margin:0 auto;background:var(--deep);overflow:hidden;box-shadow:0 0 120px rgba(109,40,217,0.25);touch-action:pan-y;}
   .shell.theme-light{--ink:#F5F0FF;--deep:#FBF8FF;--surface:#FFFFFF;--elevated:#F1EAFB;--border:rgba(39,26,58,0.12);--white:#171020;--muted:rgba(23,16,32,0.55);--accent-grad:linear-gradient(135deg,#6D28D9,#C9A84C);box-shadow:0 0 120px rgba(201,168,76,0.2);}
   .shell.theme-black{--ink:#000000;--deep:#030205;--surface:#09060D;--elevated:#100A18;--border:rgba(255,255,255,0.09);--white:#FFFFFF;--muted:rgba(255,255,255,0.44);--accent-grad:linear-gradient(135deg,#111111,#6D28D9);}
   .shell.chat-gold{--accent-grad:linear-gradient(135deg,var(--gold),#A67C1B);}
   .shell.chat-mono{--accent-grad:linear-gradient(135deg,#27272A,#71717A);}
-  .screen-wrap{position:absolute;inset:0;overflow:hidden;}
+  .screen-wrap{position:absolute;inset:0;overflow:hidden;overflow-x:hidden;}
   .nav-pill{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;align-items:center;background:rgba(21,14,32,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(109,40,217,0.3);border-radius:100px;padding:6px 8px;gap:2px;box-shadow:0 8px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04) inset;}
   .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:100px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--ff-sans);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;transition:all 0.25s;position:relative;}
   .nav-item.active{background:linear-gradient(135deg,var(--violet),#5B21B6);color:var(--white);box-shadow:0 4px 16px rgba(109,40,217,0.5);}
@@ -70,6 +70,7 @@ const CSS = `
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
   .nav-pill.compact{left:38px;top:50%;bottom:auto;transform:translate(-50%,-50%);border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;pointer-events:none;touch-action:none;}
+  .nav-pill.compact.open{background:transparent !important;border:none !important;box-shadow:none !important;}
   .nav-pill.compact.open.vertical{height:min(70vh,520px);width:42px;flex-direction:column;}
   .nav-pill.compact.open.horizontal{width:min(78vw,340px);height:42px;flex-direction:row;}
   .nav-roll{display:flex;align-items:center;justify-content:space-between;flex:1;min-height:0;min-width:0;pointer-events:none;}
@@ -90,9 +91,9 @@ const CSS = `
   @keyframes nav-orbit{to{transform:rotate(360deg);}}
   .profile-float-btn{position:absolute;top:16px;right:16px;z-index:190;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.5);transition:all 0.2s;flex-shrink:0;}
   .profile-float-btn img{width:100%;height:100%;object-fit:cover;}
-  .feed-wrap{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;}
+  .feed-wrap{height:100%;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y mandatory;scrollbar-width:none;}
   .feed-wrap::-webkit-scrollbar{display:none;}
-  .feed-card{position:relative;height:100vh;scroll-snap-align:start;overflow:hidden;}
+  .feed-card{position:relative;height:100dvh;min-height:100dvh;scroll-snap-align:start;overflow:hidden;}
   .feed-video-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
   .feed-cinema{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,4,9,0.97) 0%,rgba(6,4,9,0.35) 35%,transparent 65%),linear-gradient(to bottom,rgba(6,4,9,0.6) 0%,transparent 25%);}
   .feed-topbar{position:absolute;top:0;left:0;right:0;z-index:10;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;}
@@ -136,7 +137,7 @@ const CSS = `
   .edition-badge{position:absolute;top:68px;right:14px;display:flex;flex-direction:column;align-items:flex-end;z-index:10;pointer-events:none;}
   .edition-num{font-family:var(--ff-impact);font-size:60px;line-height:1;color:rgba(201,168,76,0.1);letter-spacing:-2px;}
   .edition-label{font-family:var(--ff-sans);font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(201,168,76,0.25);margin-top:-8px;}
-  .profile-scroll{height:100%;overflow-y:auto;scrollbar-width:none;padding-bottom:100px;}
+  .profile-scroll{height:100%;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:100px;}
   .profile-scroll::-webkit-scrollbar{display:none;}
   .profile-hero{position:relative;height:270px;overflow:hidden;}
   .profile-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
@@ -265,7 +266,7 @@ const CSS = `
   .inbox-story-avatar img{width:100%;height:100%;object-fit:cover;}
   .inbox-story-plus{position:absolute;right:0;bottom:0;width:20px;height:20px;border-radius:50%;background:#0EA5E9;border:2px solid var(--deep);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
   .inbox-story-label{display:block;margin-top:6px;font-size:11px;color:rgba(248,245,255,0.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .chat-list-area{flex:1;overflow-y:auto;scrollbar-width:none;}
+  .chat-list-area{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;}
   .chat-list-area::-webkit-scrollbar{display:none;}
   .chat-row{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
   .chat-row:hover{background:rgba(109,40,217,0.06);}
@@ -2117,7 +2118,9 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
   const [viewPost, setViewPost] = useState(null);
   const [commentPost, setCommentPost] = useState(null);
   const [avatarStatus, setAvatarStatus] = useState("");
+  const [coverStatus, setCoverStatus] = useState("");
   const fileRef = useRef();
+  const coverRef = useRef();
   const dp = profile || {};
   const fullName = dp.full_name || user?.email?.split("@")[0] || "My Profile";
   const [first, ...rest] = fullName.split(" "); const last = rest.join(" ");
@@ -2167,24 +2170,59 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
     }
   };
 
+  const uploadCover = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      setCoverStatus("Choose an image file for your cover.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setCoverStatus(`Cover photo must be ${MAX_UPLOAD_LABEL} or smaller.`);
+      e.target.value = "";
+      return;
+    }
+    setCoverStatus("Uploading cover photo...");
+    const ext = cleanFileExt(file);
+    const path = `banners/${user.uid}/cover.${ext}`;
+    const task = uploadBytesResumable(sRef(storage, path), file, { contentType: file.type });
+    task.on("state_changed", null, (err) => {
+      setCoverStatus(storageErrorMessage(err));
+      e.target.value = "";
+    }, async () => {
+      const url = await getDownloadURL(task.snapshot.ref);
+      await updateDoc(doc(db, "profiles", user.uid), { banner_url: url });
+      onProfileUpdated();
+      setCoverStatus("Cover photo updated.");
+      e.target.value = "";
+      window.setTimeout(() => setCoverStatus(""), 2200);
+    });
+  };
+
   const tabs = [{ id: "portfolio", label: "Works" }, { id: "orders", label: "Orders" }, ...(isCreator ? [{ id: "analytics", label: "Analytics" }] : []), { id: "reviews", label: "Reviews" }];
 
   return (
     <>
       <div className="profile-scroll">
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadAvatar} />
+        <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadCover} />
         <div className="profile-hero">
           <div className="profile-hero-bg" style={{ background: dp.banner_url ? `url(${dp.banner_url}) center/cover` : PALETTES[0] }}>
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.1 }}><span style={{ fontFamily: "var(--ff-impact)", fontSize: 160, color: "#fff", letterSpacing: -6 }}>ATELIER</span></div>
           </div>
           <div className="profile-hero-grad" />
           <div className="profile-hero-name">{first}<br />{last}</div>
-          <div style={{ position: "absolute", bottom: -30, right: 20, zIndex: 10, width: 72, height: 72, borderRadius: "50%", border: "2px solid var(--gold)", overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, cursor: "pointer", background: PALETTES[0], flexShrink: 0 }} onClick={() => fileRef.current?.click()}>
+          <div style={{ position: "absolute", top: 14, right: 14, zIndex: 11, width: 48, height: 48, borderRadius: "50%", border: "2px solid var(--gold)", overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, cursor: "pointer", background: PALETTES[0], flexShrink: 0 }} onClick={() => coverRef.current?.click()}>
+            {dp.banner_url ? <img src={dp.banner_url} alt="Cover" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "C"}
+            <div style={{ position: "absolute", bottom: 0, right: 0, width: 20, height: 20, background: "var(--violet)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--deep)", fontSize: 10 }}>C</div>
+          </div>
+          <div style={{ position: "absolute", bottom: -52, left: 18, zIndex: 12, width: 110, height: 110, borderRadius: "50%", border: "3px solid var(--gold)", overflow: "hidden", boxShadow: "0 12px 36px rgba(0,0,0,0.58)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, fontWeight: 700, cursor: "pointer", background: PALETTES[0], flexShrink: 0 }} onClick={() => fileRef.current?.click()}>
             {dp.avatar_url ? <img src={dp.avatar_url} alt={fullName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(fullName)}
-            <div style={{ position: "absolute", bottom: 0, right: 0, width: 20, height: 20, background: "var(--violet)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--deep)", fontSize: 10 }}>✎</div>
+            <div style={{ position: "absolute", bottom: 2, right: 2, width: 24, height: 24, background: "var(--violet)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--deep)", fontSize: 10 }}>✎</div>
           </div>
         </div>
-        <div className="profile-meta">
+        <div className="profile-meta" style={{ paddingTop: 66 }}>
           <div className="profile-handle-row"><span className="profile-handle">@{dp.username || user?.email?.split("@")[0]}{dp.location && ` · ${dp.location}`}</span>{dp.is_verified && <span className="verified-mark">✓</span>}</div>
           <div className="profile-role-chip">{ROLE_EMOJI[dp.role] || "🛍️"} {(dp.role || "customer").replace("_", " ")}</div>
           <p className="profile-bio" style={!dp.bio ? { opacity: 0.4, fontStyle: "italic" } : {}}>{dp.bio || "Tap Edit Profile to add your bio…"}</p>
@@ -2193,8 +2231,9 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
               <div key={l} className="profile-stat"><span className="profile-stat-n">{n}</span><span className="profile-stat-l">{l}</span></div>
             ))}
           </div>
-          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={() => fileRef.current?.click()}>Photo</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-ghost" onClick={onSettings} title="Settings"><IcoGear /></button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
+          <div className="profile-action-row"><button className="btn-gold" onClick={() => setShowEdit(true)}>Edit Profile</button><button className="btn-ghost" onClick={() => fileRef.current?.click()}>Photo</button><button className="btn-ghost" onClick={() => coverRef.current?.click()}>Cover</button><button className="btn-ghost" onClick={shareProfile}>Share</button><button className="btn-ghost" onClick={onSettings} title="Settings"><IcoGear /></button><button className="btn-danger" onClick={onSignOut} title="Sign out"><IcoLogout /></button></div>
           {avatarStatus && <div style={{ marginTop: 10, color: "var(--gold)", fontSize: 12, fontWeight: 700 }}>{avatarStatus}</div>}
+          {coverStatus && <div style={{ marginTop: 8, color: "var(--gold)", fontSize: 12, fontWeight: 700 }}>{coverStatus}</div>}
           {dp.services?.length > 0 && <div className="service-chips">{dp.services.map(s => <span key={s} className="service-chip">{s}</span>)}</div>}
         </div>
         <div className="profile-tabs">{tabs.map(t => (<button key={t.id} onClick={() => setTab(t.id)} className="profile-tab" style={{ color: tab === t.id ? "var(--white)" : "var(--muted)", borderBottom: `1.5px solid ${tab === t.id ? "var(--gold)" : "transparent"}` }}>{t.label}</button>))}</div>
@@ -3044,7 +3083,19 @@ export default function VioFashion() {
 
   const isSecondary = screen === "search" || screen === "notifications";
   const compactNav = true;
-  const navAxis = Math.min(navPos.y, shellSize.height - navPos.y) < Math.min(navPos.x, shellSize.width - navPos.x) ? "horizontal" : "vertical";
+  const navDistances = {
+    left: navPos.x,
+    right: shellSize.width - navPos.x,
+    top: navPos.y,
+    bottom: shellSize.height - navPos.y,
+  };
+  const navEdge = Object.entries(navDistances).sort((a, b) => a[1] - b[1])[0][0];
+  const navAxis = (navEdge === "top" || navEdge === "bottom") ? "horizontal" : "vertical";
+  const navAnchor = navOpen
+    ? (navAxis === "vertical"
+      ? { x: navEdge === "left" ? 24 : shellSize.width - 24, y: shellSize.height * 0.5 }
+      : { x: shellSize.width * 0.5, y: navEdge === "top" ? 32 : shellSize.height - 32 })
+    : navPos;
   const navItems = compactNav
     ? [...NAV, { id: "profile", label: "Profile", icon: <IcoUser /> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
     : NAV;
@@ -3072,7 +3123,7 @@ export default function VioFashion() {
       {isSecondary && (
         <button onClick={() => setScreen("feed")} style={{ position: "absolute", top: 18, right: 16, zIndex: 190, width: 34, height: 34, background: "rgba(21,14,32,0.8)", border: "1px solid var(--border)", backdropFilter: "blur(10px)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--white)" }}><IcoX /></button>
       )}
-      <div className={`nav-pill ${compactNav ? "compact" : ""} ${navOpen ? "open" : ""} ${navAxis}`} style={{ left: navPos.x, top: navPos.y }}>
+      <div className={`nav-pill ${compactNav ? "compact" : ""} ${navOpen ? "open" : ""} ${navAxis}`} style={{ left: navAnchor.x, top: navAnchor.y }}>
         {navOpen && <div className="nav-roll upper">{upperNavItems.map(renderNavItem)}</div>}
         <button className="nav-toggle-grid" onPointerDown={navPointerDown} onPointerMove={navPointerMove} onPointerUp={navPointerUp} onPointerCancel={navPointerUp} title="Drag or tap navigation"><span /><span /><span /><span /></button>
         {navOpen && <div className="nav-roll lower">{lowerNavItems.map(renderNavItem)}</div>}
