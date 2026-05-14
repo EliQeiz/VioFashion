@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  collection, doc, getDoc, getDocs, addDoc,
+  collection, doc, getDoc, getDocs, addDoc, setDoc,
   updateDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, increment, writeBatch,
 } from "firebase/firestore";
@@ -316,24 +316,34 @@ export function useSearch(queryStr, type = "all") {
 // ════════════════════════════════════════════════════════════
 
 export async function getOrCreateConversation(uid1, uid2) {
-  const [p1, p2] = [uid1, uid2].sort();
-  const snap = await getDocs(
-    query(col("conversations"),
-      where("participant1", "==", p1),
-      where("participant2", "==", p2),
-      limit(1))
-  );
-  if (!snap.empty) return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  if (!uid1 || !uid2) throw new Error("Both users are required to start a conversation.");
+  if (uid1 === uid2) throw new Error("You cannot start a conversation with yourself.");
 
-  const ref = await addDoc(col("conversations"), {
+  const [p1, p2] = [uid1, uid2].sort();
+  const conversationId = `${p1}_${p2}`;
+  const existing = await getDocs(
+    query(
+      col("conversations"),
+      where("participants", "array-contains", uid1),
+      limit(50),
+    )
+  );
+  const match = existing.docs.find((d) => {
+    const participants = d.data().participants || [];
+    return participants.includes(uid1) && participants.includes(uid2);
+  });
+  if (match) return { id: match.id, ...match.data() };
+
+  const data = {
     participant1:    p1,
     participant2:    p2,
     participants:    [p1, p2],
     last_message:    null,
     last_message_at: serverTimestamp(),
     created_at:      serverTimestamp(),
-  });
-  return { id: ref.id, participant1: p1, participant2: p2, participants: [p1, p2], last_message: null };
+  };
+  await setDoc(dref("conversations", conversationId), data);
+  return { id: conversationId, ...data };
 }
 
 // ════════════════════════════════════════════════════════════

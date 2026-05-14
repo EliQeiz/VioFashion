@@ -1249,6 +1249,7 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
   const [videos, setVideos]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [followed, setFollowed] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     if (!creatorId) return;
@@ -1300,8 +1301,14 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
   const handleMessage = async () => {
     if (!currentUser || !creatorId) return;
     if (isDemoCreatorId(creatorId)) return;
-    try { const conv = await getOrCreateConversation(currentUser.uid, creatorId); onStartChat({ ...conv, other: profile, participants: [currentUser.uid, creatorId] }); onClose(); }
-    catch (err) { console.error(err); }
+    try {
+      const conv = await getOrCreateConversation(currentUser.uid, creatorId);
+      onStartChat({ ...conv, other: profile, participants: conv.participants || [currentUser.uid, creatorId] });
+      onClose();
+    } catch (err) {
+      console.error("Failed to start profile conversation", err);
+      setActionError(err?.message || "Could not start this conversation. Please try again.");
+    }
   };
 
   return (
@@ -1326,6 +1333,7 @@ function CreatorProfileModal({ creatorId, currentUser, onClose, onStartChat }) {
                   <div key={l} className="cp-stat"><span className="cp-stat-n">{n}</span><span className="cp-stat-l">{l}</span></div>
                 ))}
               </div>
+              {actionError && <div style={{ marginBottom: 12, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#ff8a8a", borderRadius: 12, padding: "10px 12px", fontSize: 13 }}>{actionError}</div>}
               {currentUser && currentUser.uid !== creatorId && (
                 <div className="cp-action-row">
                   <button className={`cp-follow-btn ${followed ? "following" : ""}`} onClick={toggleFollow}>{followed ? "✓ Following" : "+ Follow"}</button>
@@ -2162,10 +2170,17 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
 
   const startConversation = async (person) => {
     if (!user || !person?.id) return;
-    const conv = await getOrCreateConversation(user.uid, person.id);
-    setOpen({ ...conv, other: person, participants: [user.uid, person.id] });
-    setUserQuery("");
-    setUserResults([]);
+    try {
+      const conv = await getOrCreateConversation(user.uid, person.id);
+      setOpen({ ...conv, other: person, participants: conv.participants || [user.uid, person.id] });
+      setUserQuery("");
+      setUserResults([]);
+      setCallNotice("");
+    } catch (error) {
+      console.error("Failed to start conversation", error);
+      setCallNotice(error?.message || "Could not start this conversation. Please try again.");
+      window.setTimeout(() => setCallNotice(""), 3600);
+    }
   };
 
   const uploadVoiceNote = async (blob) => {
@@ -2234,6 +2249,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
           </div>
         )}
         {loading && <Spinner />}
+        {callNotice && !open && <div style={{ margin: "0 20px 12px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)", color: "#ff8a8a", borderRadius: 12, padding: "10px 12px", fontSize: 13 }}>{callNotice}</div>}
         {!loading && convs.length === 0 && <div className="empty-state"><div className="empty-icon">💬</div><div className="empty-title">No messages yet</div><div className="empty-sub">Start a conversation from a creator's profile</div></div>}
         {!loading && convs.length > 0 && visibleConvs.length === 0 && <div className="empty-state"><div className="empty-icon">🔎</div><div className="empty-title">No matches</div><div className="empty-sub">Try another conversation search</div></div>}
         {visibleConvs.map((c, i) => {
