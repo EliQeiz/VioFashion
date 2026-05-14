@@ -69,9 +69,9 @@ const CSS = `
   .nav-post-btn{width:44px;height:44px;background:linear-gradient(135deg,var(--gold),#B8943A);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,0.4);transition:all 0.25s;flex-shrink:0;}
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
-  .nav-pill.compact{left:12px;bottom:98px;transform:none;flex-direction:column;border-radius:28px;padding:7px;gap:8px;background:rgba(21,14,32,0.86);}
-  .nav-pill.compact .nav-item{width:46px;height:46px;padding:0;justify-content:center;font-size:0;border-radius:17px;}
-  .nav-pill.compact .nav-post-btn{width:46px;height:46px;}
+  .nav-pill.compact{left:12px;top:50%;transform:translateY(-50%);flex-direction:column;border-radius:28px;padding:7px;gap:15px;background:rgba(21,14,32,0.86);justify-content:center;}
+  .nav-pill.compact .nav-item{width:38px;height:38px;padding:0;justify-content:center;font-size:0;border-radius:17px;}
+  .nav-pill.compact .nav-post-btn{width:38px;height:38px;}
   .nav-toggle-grid{width:46px;height:46px;border:none;border-radius:18px;background:rgba(255,255,255,0.07);border:1px solid var(--border);display:grid;grid-template-columns:repeat(2,8px);grid-template-rows:repeat(2,8px);gap:5px;place-content:center;cursor:pointer;color:var(--white);animation:nav-orbit 4s linear infinite;}
   .nav-toggle-grid span{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(201,168,76,0.45);}
   @keyframes nav-orbit{to{transform:rotate(360deg);}}
@@ -2175,6 +2175,8 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const [callNotice, setCallNotice] = useState("");
   const [recording, setRecording] = useState(false);
   const [voiceUploading, setVoiceUploading] = useState(false);
+  const [recordingBlob, setRecordingBlob] = useState(null);
+  const [showVoiceOptions, setShowVoiceOptions] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [viewCreator, setViewCreator] = useState(null);
   const endRef = useRef();
@@ -2285,6 +2287,17 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     });
   };
 
+  const sendVoiceNote = () => {
+    if (recordingBlob) uploadVoiceNote(recordingBlob);
+    setShowVoiceOptions(false);
+    setRecordingBlob(null);
+  };
+
+  const cancelVoiceNote = () => {
+    setShowVoiceOptions(false);
+    setRecordingBlob(null);
+  };
+
   const toggleRecording = async () => {
     if (recording) {
       recorderRef.current?.stop();
@@ -2300,7 +2313,8 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
       recorder.onstop = () => {
         stream.getTracks().forEach(track => track.stop());
         const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
-        uploadVoiceNote(blob);
+        setRecordingBlob(blob);
+        setShowVoiceOptions(true);
       };
       recorder.start();
       setRecording(true);
@@ -2380,10 +2394,33 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
             <div className="chat-inp-bar">
               <EmojiPicker onPick={e => setMsg(p => `${p}${e}`)} />
               <input className="chat-inp" placeholder="Write a message…" value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
-              <button className="chat-send" onClick={toggleRecording} title="Voice note" style={recording ? { background: "linear-gradient(135deg,#DC2626,#B91C1C)" } : null}>{recording ? "■" : "🎙"}</button>
-              <button className="chat-send" onClick={send}><IcoSend /></button>
+              {recording ? (
+                <>
+                  <button className="chat-send" onClick={() => { recorderRef.current?.stop(); }} title="Stop recording" style={{ background: "var(--danger)" }}>■</button>
+                  <button className="chat-send" onClick={() => { recorderRef.current?.stop(); setRecording(false); setRecordingBlob(new Blob(voiceChunksRef.current, { type: "audio/webm" })); uploadVoiceNote(new Blob(voiceChunksRef.current, { type: "audio/webm" })); }} title="Send immediately" style={{ background: "var(--green)" }}><IcoSend /></button>
+                </>
+              ) : (
+                <>
+                  <button className="chat-send" onClick={toggleRecording} title="Voice note">🎙</button>
+                  <button className="chat-send" onClick={send}><IcoSend /></button>
+                </>
+              )}
             </div>
-            {voiceUploading && <div style={{ position: "absolute", bottom: 78, left: 16, right: 16, fontSize: 11, color: "var(--gold-lt)", textAlign: "center" }}>Uploading voice note...</div>}
+            {showVoiceOptions && (
+              <div className="modal-overlay" style={{ zIndex: 600 }}>
+                <div className="modal-sheet" style={{ maxWidth: 300, textAlign: "center" }}>
+                  <div className="sheet-handle" />
+                  <div className="sheet-inner">
+                    <div className="sheet-title">Voice Note</div>
+                    <div className="sheet-sub">What would you like to do with your recording?</div>
+                    <div className="modal-row">
+                      <button className="modal-submit" onClick={sendVoiceNote} style={{ background: "var(--green)" }}>Send ✦</button>
+                      <button className="modal-cancel" onClick={cancelVoiceNote}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {viewCreator && <CreatorProfileModal creatorId={viewCreator} currentUser={user} onClose={() => setViewCreator(null)} onStartChat={conv => { setViewCreator(null); setOpen({ ...conv, other: o, participants: conv.participants || open.participants }); }} />}
           </div>
         );
@@ -2613,7 +2650,7 @@ export default function VioFashion() {
   };
 
   const isSecondary = screen === "search" || screen === "notifications";
-  const compactNav = screen !== "feed";
+  const compactNav = true;
   const navItems = compactNav
     ? [...NAV, { id: "profile", label: "Profile", icon: <span style={{ fontSize: 15, fontWeight: 800 }}>{initials(fullName) || "P"}</span> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
     : NAV;
