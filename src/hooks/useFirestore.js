@@ -368,11 +368,3 @@ export async function endLiveStream(streamId) {
     ended_at:   serverTimestamp(),
   });
 }
-
-export async function deleteMessage(messageId, userId) {
-  await deleteDoc(dref("messages", messageId));
-}
-
-export async function deleteConversation(conversationId, userId) {
-  await deleteDoc(dref("conversations", conversationId));
-}

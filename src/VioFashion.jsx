@@ -6,7 +6,7 @@ import { db, storage } from "./firebaseClient";
 import {
   collection, doc, getDoc, getDocs, addDoc, setDoc,
   updateDoc, deleteDoc, query, where, orderBy, limit,
-  onSnapshot, serverTimestamp, increment,
+  onSnapshot, serverTimestamp, increment, arrayUnion,
 } from "firebase/firestore";
 import { ref as sRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useAuth } from "./hooks/useAuth.jsx";
@@ -69,11 +69,17 @@ const CSS = `
   .nav-post-btn{width:44px;height:44px;background:linear-gradient(135deg,var(--gold),#B8943A);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,0.4);transition:all 0.25s;flex-shrink:0;}
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
-  .nav-pill.compact{left:12px;top:50%;transform:translateY(-50%);flex-direction:column;border-radius:28px;padding:7px;gap:15px;background:rgba(21,14,32,0.86);justify-content:center;}
-  .nav-pill.compact .nav-item{width:38px;height:38px;padding:0;justify-content:center;font-size:0;border-radius:17px;}
-  .nav-pill.compact .nav-post-btn{width:38px;height:38px;}
-  .nav-toggle-grid{width:46px;height:46px;border:none;border-radius:18px;background:rgba(255,255,255,0.07);border:1px solid var(--border);display:grid;grid-template-columns:repeat(2,8px);grid-template-rows:repeat(2,8px);gap:5px;place-content:center;cursor:pointer;color:var(--white);animation:nav-orbit 4s linear infinite;}
-  .nav-toggle-grid span{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(201,168,76,0.45);}
+  .nav-pill.compact{left:12px;top:48%;bottom:auto;transform:translateY(-50%);flex-direction:column;border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;}
+  .nav-pill.compact.open{top:50%;height:min(72vh,520px);padding:8px 5px;background:rgba(21,14,32,0.78);border:1px solid rgba(109,40,217,0.24);box-shadow:0 12px 34px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.04) inset;}
+  .nav-roll{display:flex;flex-direction:column;align-items:center;justify-content:space-between;flex:1;width:100%;min-height:0;}
+  .nav-roll.upper{padding-bottom:7px;}
+  .nav-roll.lower{padding-top:7px;}
+  .nav-pill.compact .nav-item{width:32px;height:32px;padding:0;justify-content:center;font-size:0;border-radius:13px;}
+  .nav-pill.compact .nav-item svg{width:15px;height:15px;}
+  .nav-pill.compact .nav-post-btn{width:34px;height:34px;}
+  .nav-pill.compact .nav-post-btn svg{width:16px;height:16px;}
+  .nav-toggle-grid{width:38px;height:38px;border:none;border-radius:16px;background:rgba(255,255,255,0.07);border:1px solid var(--border);display:grid;grid-template-columns:repeat(2,6px);grid-template-rows:repeat(2,6px);gap:5px;place-content:center;cursor:pointer;color:var(--white);animation:nav-orbit 4s linear infinite;box-shadow:0 8px 22px rgba(0,0,0,0.4);}
+  .nav-toggle-grid span{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(201,168,76,0.45);}
   @keyframes nav-orbit{to{transform:rotate(360deg);}}
   .profile-float-btn{position:absolute;top:16px;right:16px;z-index:190;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.5);transition:all 0.2s;flex-shrink:0;}
   .profile-float-btn img{width:100%;height:100%;object-fit:cover;}
@@ -265,6 +271,12 @@ const CSS = `
   .msg-wrap.inc .msg-bubble{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;}
   .msg-wrap.out .msg-bubble{background:var(--accent-grad);border-bottom-right-radius:4px;}
   .msg-time{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;}
+  .msg-tools{display:flex;align-items:center;justify-content:flex-end;gap:6px;position:relative;}
+  .msg-more{width:20px;height:20px;border:none;border-radius:7px;background:rgba(255,255,255,0.06);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .msg-menu{position:absolute;right:0;bottom:24px;z-index:60;width:160px;background:rgba(21,14,32,0.98);border:1px solid var(--border);border-radius:13px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,0.45);}
+  .msg-menu button{width:100%;background:transparent;border:none;color:var(--white);font-size:12px;text-align:left;padding:9px 10px;border-radius:9px;cursor:pointer;}
+  .msg-menu button:hover{background:rgba(109,40,217,0.12);}
+  .msg-menu .danger{color:var(--danger);}
   .chat-inp-bar{display:flex;align-items:center;gap:10px;padding:12px 16px 20px;border-top:1px solid var(--border);background:rgba(6,4,9,0.6);backdrop-filter:blur(10px);flex-shrink:0;}
   .chat-inp{flex:1;background:rgba(21,14,32,0.8);border:1px solid var(--border);border-radius:100px;padding:11px 18px;color:var(--white);font-family:var(--ff-sans);font-size:13px;font-weight:300;outline:none;}
   .chat-inp::placeholder{color:var(--muted);}
@@ -2179,9 +2191,11 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const [showVoiceOptions, setShowVoiceOptions] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [viewCreator, setViewCreator] = useState(null);
+  const [messageMenu, setMessageMenu] = useState(null);
   const endRef = useRef();
   const recorderRef = useRef(null);
   const voiceChunksRef = useRef([]);
+  const voiceActionRef = useRef("draft");
 
   useEffect(() => {
     if (pendingConv && !loading) { setOpen(pendingConv); onConvOpened?.(); }
@@ -2210,14 +2224,16 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     if (!open) return;
     const q = query(collection(db, "messages"), where("conversation_id", "==", open.id), orderBy("created_at", "asc"));
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setMessages(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(m => !(m.deleted_for || []).includes(user?.uid)));
       setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     }, (error) => {
       console.error("Failed to load messages", error);
       setMessages([]);
     });
     return unsub;
-  }, [open]);
+  }, [open, user?.uid]);
 
   useEffect(() => {
     if (!user) return;
@@ -2283,14 +2299,22 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     }, async () => {
       const url = await getDownloadURL(task.snapshot.ref);
       await sendMessage("Voice note", { type: "voice", audio_url: url });
+      setRecordingBlob(null);
+      setShowVoiceOptions(false);
       setVoiceUploading(false);
     });
   };
 
-  const sendVoiceNote = () => {
-    if (recordingBlob) uploadVoiceNote(recordingBlob);
+  const stopRecording = (action = "draft") => {
+    if (!recording) return;
+    voiceActionRef.current = action;
+    recorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  const sendVoiceNote = async () => {
+    if (recordingBlob) await uploadVoiceNote(recordingBlob);
     setShowVoiceOptions(false);
-    setRecordingBlob(null);
   };
 
   const cancelVoiceNote = () => {
@@ -2300,8 +2324,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
 
   const toggleRecording = async () => {
     if (recording) {
-      recorderRef.current?.stop();
-      setRecording(false);
+      stopRecording("draft");
       return;
     }
     try {
@@ -2313,9 +2336,16 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
       recorder.onstop = () => {
         stream.getTracks().forEach(track => track.stop());
         const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
-        setRecordingBlob(blob);
-        setShowVoiceOptions(true);
+        if (!blob.size) return;
+        if (voiceActionRef.current === "send") {
+          uploadVoiceNote(blob);
+        } else {
+          setRecordingBlob(blob);
+          setShowVoiceOptions(true);
+        }
+        voiceActionRef.current = "draft";
       };
+      voiceActionRef.current = "draft";
       recorder.start();
       setRecording(true);
     } catch {
@@ -2331,6 +2361,23 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const startCall = (kind) => {
     setCallNotice(`${kind} calls are queued for beta. Chat is live now.`);
     window.setTimeout(() => setCallNotice(""), 2400);
+  };
+
+  const deleteMessageForMe = async (messageId) => {
+    if (!user?.uid) return;
+    await updateDoc(doc(db, "messages", messageId), { deleted_for: arrayUnion(user.uid) });
+    setMessageMenu(null);
+  };
+
+  const deleteMessageForEveryone = async (message) => {
+    if (!user?.uid || message.sender_id !== user.uid) return;
+    await updateDoc(doc(db, "messages", message.id), {
+      deleted_all: true,
+      content: "This message was deleted",
+      audio_url: null,
+      deleted_at: serverTimestamp(),
+    });
+    setMessageMenu(null);
   };
 
   return (
@@ -2382,10 +2429,23 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
             <div className="msgs-area">
               {messages.map(m => {
                 const isOut = m.sender_id === user?.uid;
+                const isDeleted = !!m.deleted_all;
                 return (
                   <div key={m.id} className={`msg-wrap ${isOut ? "out" : "inc"}`}>
                     {!isOut && <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, alignSelf: "flex-end", background: PALETTES[pal], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{initials(o?.full_name || o?.username)}</div>}
-                    <div><div className="msg-bubble">{m.type === "voice" && m.audio_url ? <audio controls src={m.audio_url} style={{ width: 180 }} /> : m.content}</div><div className="msg-time">{timeAgo(m.created_at)}</div></div>
+                    <div>
+                      <div className="msg-bubble">{!isDeleted && m.type === "voice" && m.audio_url ? <audio controls src={m.audio_url} style={{ width: 180 }} /> : <span style={isDeleted ? { opacity: 0.65, fontStyle: "italic" } : null}>{m.content}</span>}</div>
+                      <div className="msg-tools">
+                        <span className="msg-time">{timeAgo(m.created_at)}</span>
+                        <button className="msg-more" onClick={() => setMessageMenu(p => p === m.id ? null : m.id)} title="Message options">⋯</button>
+                        {messageMenu === m.id && (
+                          <div className="msg-menu">
+                            <button onClick={() => deleteMessageForMe(m.id)}>Delete for me</button>
+                            {isOut && !isDeleted && <button className="danger" onClick={() => deleteMessageForEveryone(m)}>Delete for everyone</button>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -2396,8 +2456,8 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
               <input className="chat-inp" placeholder="Write a message…" value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
               {recording ? (
                 <>
-                  <button className="chat-send" onClick={() => { recorderRef.current?.stop(); }} title="Stop recording" style={{ background: "var(--danger)" }}>■</button>
-                  <button className="chat-send" onClick={() => { recorderRef.current?.stop(); setRecording(false); setRecordingBlob(new Blob(voiceChunksRef.current, { type: "audio/webm" })); uploadVoiceNote(new Blob(voiceChunksRef.current, { type: "audio/webm" })); }} title="Send immediately" style={{ background: "var(--green)" }}><IcoSend /></button>
+                  <button className="chat-send" onClick={() => stopRecording("draft")} title="Stop recording" style={{ background: "var(--danger)" }}>■</button>
+                  <button className="chat-send" onClick={() => stopRecording("send")} title="Send immediately" style={{ background: "var(--green)" }}><IcoSend /></button>
                 </>
               ) : (
                 <>
@@ -2406,6 +2466,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
                 </>
               )}
             </div>
+            {voiceUploading && <div style={{ position: "absolute", bottom: 78, left: 16, right: 16, fontSize: 11, color: "var(--gold-lt)", textAlign: "center" }}>Uploading voice note...</div>}
             {showVoiceOptions && (
               <div className="modal-overlay" style={{ zIndex: 600 }}>
                 <div className="modal-sheet" style={{ maxWidth: 300, textAlign: "center" }}>
@@ -2413,6 +2474,7 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
                   <div className="sheet-inner">
                     <div className="sheet-title">Voice Note</div>
                     <div className="sheet-sub">What would you like to do with your recording?</div>
+                    {recordingBlob && <audio controls src={URL.createObjectURL(recordingBlob)} style={{ width: "100%", marginBottom: 12 }} />}
                     <div className="modal-row">
                       <button className="modal-submit" onClick={sendVoiceNote} style={{ background: "var(--green)" }}>Send ✦</button>
                       <button className="modal-cancel" onClick={cancelVoiceNote}>Delete</button>
@@ -2654,6 +2716,18 @@ export default function VioFashion() {
   const navItems = compactNav
     ? [...NAV, { id: "profile", label: "Profile", icon: <span style={{ fontSize: 15, fontWeight: 800 }}>{initials(fullName) || "P"}</span> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
     : NAV;
+  const upperNavItems = navItems.slice(0, 3);
+  const lowerNavItems = navItems.slice(3);
+  const renderNavItem = (item) => {
+    if (item.id === "post") return <button key="post" className="nav-post-btn" onClick={() => handleNav("post")} title="Post"><IcoPlus /></button>;
+    const isActive = screen === item.id;
+    const hasBadge = (item.id === "chat" && unreadMsgs > 0) || (item.id === "feed" && unreadCount > 0);
+    return (
+      <button key={item.id} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => handleNav(item.id)} title={item.label}>
+        {item.icon}{!compactNav && item.label}{hasBadge && <div className="nav-badge" />}
+      </button>
+    );
+  };
 
   return (
     <div className={`shell theme-${theme} chat-${chatTheme}`}>
@@ -2666,22 +2740,12 @@ export default function VioFashion() {
       {isSecondary && (
         <button onClick={() => setScreen("feed")} style={{ position: "absolute", top: 18, right: 16, zIndex: 190, width: 34, height: 34, background: "rgba(21,14,32,0.8)", border: "1px solid var(--border)", backdropFilter: "blur(10px)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--white)" }}><IcoX /></button>
       )}
-      <div className={`nav-pill ${compactNav ? "compact" : ""}`}>
-        {compactNav && <button className="nav-toggle-grid" onClick={() => setNavOpen(p => !p)} title="Navigation"><span /><span /><span /><span /></button>}
-        {(!compactNav || navOpen) && navItems.map(item => {
-          if (item.id === "post") return <button key="post" className="nav-post-btn" onClick={() => handleNav("post")}><IcoPlus /></button>;
-          const isActive = screen === item.id;
-          const hasBadge = (item.id === "chat" && unreadMsgs > 0) || (item.id === "feed" && unreadCount > 0);
-          return (
-            <button key={item.id} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => handleNav(item.id)} title={item.label}>
-              {item.icon}{!compactNav && item.label}{hasBadge && <div className="nav-badge" />}
-            </button>
-          );
-        })}
+      <div className={`nav-pill ${compactNav ? "compact" : ""} ${navOpen ? "open" : ""}`}>
+        {navOpen && <div className="nav-roll upper">{upperNavItems.map(renderNavItem)}</div>}
+        <button className="nav-toggle-grid" onClick={() => setNavOpen(p => !p)} title="Navigation"><span /><span /><span /><span /></button>
+        {navOpen && <div className="nav-roll lower">{lowerNavItems.map(renderNavItem)}</div>}
       </div>
       {showUpload && <UploadModal user={user} onClose={() => setShowUpload(false)} onSuccess={() => { setShowUpload(false); setScreen("feed"); }} />}
     </div>
   );
 }
-
-
