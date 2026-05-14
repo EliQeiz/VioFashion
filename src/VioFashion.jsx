@@ -256,6 +256,15 @@ const CSS = `
   .chat-head-title{font-family:var(--ff-serif);font-size:28px;font-style:italic;font-weight:300;color:var(--white);margin-bottom:14px;}
   .chat-search-bar{display:flex;align-items:center;gap:10px;background:rgba(21,14,32,0.8);border:1px solid var(--border);border-radius:12px;padding:10px 14px;}
   .chat-search-bar input{flex:1;background:transparent;border:none;outline:none;color:var(--white);font-family:var(--ff-sans);font-size:13px;font-weight:300;}
+  .inbox-story-strip{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .inbox-story-strip::-webkit-scrollbar{display:none;}
+  .inbox-story-item{width:64px;flex:0 0 auto;background:none;border:none;color:var(--white);cursor:pointer;text-align:center;}
+  .inbox-story-ring{width:62px;height:62px;border-radius:50%;padding:2px;background:conic-gradient(#00E5FF,#22D3EE,#3B82F6,#00E5FF);box-shadow:0 8px 20px rgba(0,0,0,0.25);display:block;}
+  .inbox-story-ring.mine{background:conic-gradient(var(--gold),var(--gold-lt),var(--vio-mid),var(--gold));}
+  .inbox-story-avatar{width:100%;height:100%;border-radius:50%;border:2px solid var(--deep);background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:15px;font-weight:800;position:relative;}
+  .inbox-story-avatar img{width:100%;height:100%;object-fit:cover;}
+  .inbox-story-plus{position:absolute;right:0;bottom:0;width:20px;height:20px;border-radius:50%;background:#0EA5E9;border:2px solid var(--deep);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
+  .inbox-story-label{display:block;margin-top:6px;font-size:11px;color:rgba(248,245,255,0.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .chat-list-area{flex:1;overflow-y:auto;scrollbar-width:none;}
   .chat-list-area::-webkit-scrollbar{display:none;}
   .chat-row{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
@@ -483,6 +492,45 @@ const CSS = `
   .img-preview-remove{position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(6,4,9,0.8);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--danger);font-size:9px;line-height:1;}
   .img-upload-add{width:64px;height:64px;border-radius:10px;border:1.5px dashed rgba(109,40,217,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--vio-lite);font-size:22px;flex-shrink:0;transition:all 0.2s;}
   .img-upload-add:hover{border-color:var(--violet);background:rgba(109,40,217,0.08);}
+  @media (max-width: 768px){
+    .shell{max-width:100%;height:100dvh;box-shadow:none;}
+    .feed-card{height:100dvh;}
+    .feed-topbar{padding:calc(10px + env(safe-area-inset-top)) 12px 0;gap:8px;}
+    .feed-logo{font-size:19px;}
+    .feed-tabs-row{gap:10px;}
+    .feed-tab{font-size:10px;letter-spacing:0.06em;}
+    .feed-editorial{bottom:calc(98px + env(safe-area-inset-bottom));padding:0 14px;}
+    .feed-creator-giant{font-size:clamp(28px,10vw,40px);}
+    .feed-caption{max-width:72vw;font-size:12px;line-height:1.45;}
+    .feed-action-tray{right:10px;bottom:calc(120px + env(safe-area-inset-bottom));gap:4px;}
+    .feed-action-circle{width:38px;height:38px;border-radius:12px;}
+    .feed-action-num{font-size:9px;}
+    .profile-float-btn{top:calc(12px + env(safe-area-inset-top));right:12px;}
+    .chat-head{padding:calc(14px + env(safe-area-inset-top)) 12px 12px;}
+    .chat-head-title{font-size:24px;margin-bottom:10px;}
+    .chat-search-bar{padding:9px 12px;}
+    .inbox-story-strip{padding:12px 10px 10px;gap:10px;}
+    .inbox-story-item{width:58px;}
+    .inbox-story-ring{width:56px;height:56px;}
+    .inbox-story-label{font-size:10px;}
+    .chat-row{padding:12px 14px;}
+    .chat-av{width:44px;height:44px;border-radius:14px;}
+    .chat-win-head{padding:12px;}
+    .msgs-area{padding:12px;}
+    .msg-wrap{max-width:86%;}
+    .chat-inp-bar{padding:10px 10px calc(10px + env(safe-area-inset-bottom));gap:8px;}
+    .chat-inp{padding:10px 14px;font-size:12px;}
+    .chat-send,.emoji-toggle{width:36px;height:36px;}
+    .live-top{padding:calc(12px + env(safe-area-inset-top)) 12px 0;}
+    .live-actions{right:10px;bottom:calc(168px + env(safe-area-inset-bottom));gap:9px;}
+    .live-act{width:40px;height:40px;}
+    .live-bottom{padding:10px 12px calc(12px + env(safe-area-inset-bottom));}
+    .nav-pill.compact .nav-item{width:30px;height:30px;border-radius:12px;}
+    .nav-pill.compact .nav-post-btn{width:32px;height:32px;}
+    .nav-toggle-grid{width:34px;height:34px;border-radius:14px;}
+    .profile-action-row{flex-wrap:wrap;gap:8px;}
+    .btn-gold,.btn-ghost{min-width:calc(50% - 4px);}
+  }
 `;
 
 function injectCSS() {
@@ -530,6 +578,7 @@ const IcoLogout   = () => <Ico s={16} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4
 const IcoCheck    = () => <Ico s={16} d="M20 6L9 17l-5-5" />;
 const IcoX        = () => <Ico s={14} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const IcoGear     = () => <Ico s={18} d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1H4a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 .51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6V4a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 .51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.34.58.6 1H20a2 2 0 1 1 0 4h-.09c-.26.42-.46.69-.51 1z" />;
+const IcoUser     = () => <Ico d="M20 21a8 8 0 0 0-16 0 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
 const IcoMusic    = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>);
 const IcoX2       = () => <Ico s={16} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const Spinner = () => <div className="spin-wrap"><div className="spin" /></div>;
@@ -1746,7 +1795,7 @@ function ShareSheet({ video, user, onClose, onShared }) {
   );
 }
 
-function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
+function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   const [tab, setTab]           = useState("discover");
   const [videos, setVideos]     = useState([]);
   const [liked, setLiked]       = useState({});
@@ -1759,9 +1808,6 @@ function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
   const [shareVideoItem, setShareVideoItem] = useState(null);
   const [quickActions, setQuickActions] = useState(null);
   const [viewCreator, setViewCreator]   = useState(null);
-  const [stories, setStories] = useState([]);
-  const [showStoryCreate, setShowStoryCreate] = useState(false);
-  const [activeStory, setActiveStory] = useState(null);
   const pressTimer = useRef(null);
   const lastTap = useRef({});
 
@@ -1781,25 +1827,6 @@ function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
     });
     return unsub;
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "stories"), orderBy("created_at", "desc"), limit(60));
-    const unsub = onSnapshot(q, async (snap) => {
-      const now = Date.now();
-      const rows = await Promise.all(snap.docs.map(async (d) => {
-        const story = { id: d.id, ...d.data() };
-        if (story.expires_at && story.expires_at < now) return null;
-        if (story.author_id) {
-          const ps = await getDoc(doc(db, "profiles", story.author_id));
-          story.author = ps.exists() ? { id: ps.id, ...ps.data() } : null;
-        }
-        return story;
-      }));
-      setStories(rows.filter(Boolean));
-    }, error => console.error("Failed to load stories", error));
-    return unsub;
-  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -1926,18 +1953,6 @@ function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
 
   return (
     <div style={{ height: "100%", position: "relative" }}>
-      <div className="story-rail">
-        <button className="story-chip" onClick={() => setShowStoryCreate(true)}>
-          <span className="story-ring mine"><span className="story-avatar">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : initials(profile?.full_name || user?.email || "Me")}<span className="story-plus">+</span></span></span>
-          <span className="story-label">Your story</span>
-        </button>
-        {stories.map((s, i) => (
-          <button key={s.id} className="story-chip" onClick={() => setActiveStory(s)}>
-            <span className="story-ring"><span className="story-avatar" style={{ background: PALETTES[i % PALETTES.length] }}>{s.author?.avatar_url ? <img src={s.author.avatar_url} alt="" /> : initials(s.author?.full_name || s.author?.username)}</span></span>
-            <span className="story-label">{s.author?.username || s.author?.full_name || "Story"}</span>
-          </button>
-        ))}
-      </div>
       <div className="feed-wrap">
         {feedModeNotice && <div style={{ position: "absolute", top: 72, left: 18, right: 18, zIndex: 70, background: "rgba(21,14,32,0.88)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "9px 12px", color: "var(--gold-lt)", fontSize: 11, textAlign: "center" }}>{feedModeNotice}</div>}
         {display.length === 0 && <div className="empty-state" style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}><div className="empty-icon">✦</div><div className="empty-title">No posts here yet</div><div className="empty-sub">Follow creators or switch back to Discover</div></div>}
@@ -2005,8 +2020,6 @@ function FeedScreen({ user, profile, onSearch, onNotifications, onStartChat }) {
         </div>
       )}
       {viewCreator && <CreatorProfileModal creatorId={viewCreator} currentUser={user} onClose={() => setViewCreator(null)} onStartChat={conv => { setViewCreator(null); onStartChat?.(conv); }} />}
-      {showStoryCreate && <StoryModal user={user} profile={profile} onClose={() => setShowStoryCreate(false)} />}
-      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
     </div>
   );
 }
@@ -2363,7 +2376,7 @@ function MarketScreen({ user, profile }) {
 // ════════════════════════════════════════════════════════════
 //  CHAT SCREEN
 // ════════════════════════════════════════════════════════════
-function ChatScreen({ user, pendingConv, onConvOpened }) {
+function ChatScreen({ user, profile, pendingConv, onConvOpened }) {
   const [convs, setConvs]       = useState([]);
   const [open, setOpen]         = useState(null);
   const [messages, setMessages] = useState([]);
@@ -2379,6 +2392,9 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
   const [loading, setLoading]   = useState(true);
   const [viewCreator, setViewCreator] = useState(null);
   const [messageMenu, setMessageMenu] = useState(null);
+  const [stories, setStories] = useState([]);
+  const [showStoryCreate, setShowStoryCreate] = useState(false);
+  const [activeStory, setActiveStory] = useState(null);
   const endRef = useRef();
   const recorderRef = useRef(null);
   const voiceChunksRef = useRef([]);
@@ -2435,6 +2451,29 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     }, needle ? 220 : 80);
     return () => window.clearTimeout(t);
   }, [userQuery, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "stories"), orderBy("created_at", "desc"), limit(80));
+    const unsub = onSnapshot(q, async (snap) => {
+      const now = Date.now();
+      const byAuthor = new Map();
+      for (const item of snap.docs) {
+        const story = { id: item.id, ...item.data() };
+        if (story.expires_at && story.expires_at < now) continue;
+        if (story.author_id === user.uid) continue;
+        if (!story.author_id || byAuthor.has(story.author_id)) continue;
+        byAuthor.set(story.author_id, story);
+        if (byAuthor.size >= 24) break;
+      }
+      const rows = await Promise.all([...byAuthor.values()].map(async (story) => {
+        const ps = await getDoc(doc(db, "profiles", story.author_id));
+        return { ...story, author: ps.exists() ? { id: ps.id, ...ps.data() } : null };
+      }));
+      setStories(rows);
+    }, (error) => console.error("Failed to load inbox stories", error));
+    return unsub;
+  }, [user]);
 
   const messageRecipientId = (conv) => conv?.participants?.find(id => id !== user?.uid) || (conv?.participant1 === user?.uid ? conv?.participant2 : conv?.participant1);
 
@@ -2571,6 +2610,27 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
     <div className="chat-outer">
       <div className="chat-head"><div className="chat-head-title">Messages</div><div className="chat-search-bar"><IcoSearch /><input placeholder="Search conversations..." value={queryStr} onChange={e => setQueryStr(e.target.value)} /></div><div className="chat-search-bar" style={{ marginTop: 10 }}><IcoPlus /><input placeholder="Find users to message..." value={userQuery} onChange={e => setUserQuery(e.target.value)} /></div></div>
       <div className="chat-list-area">
+        <div className="inbox-story-strip">
+          <button className="inbox-story-item" onClick={() => setShowStoryCreate(true)}>
+            <span className="inbox-story-ring mine">
+              <span className="inbox-story-avatar">
+                {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : initials(profile?.full_name || user?.email || "Me")}
+                <span className="inbox-story-plus">+</span>
+              </span>
+            </span>
+            <span className="inbox-story-label">Create</span>
+          </button>
+          {stories.map((story, i) => (
+            <button key={story.id} className="inbox-story-item" onClick={() => setActiveStory(story)}>
+              <span className="inbox-story-ring">
+                <span className="inbox-story-avatar" style={{ background: PALETTES[i % PALETTES.length] }}>
+                  {story.author?.avatar_url ? <img src={story.author.avatar_url} alt="" /> : initials(story.author?.full_name || story.author?.username || "S")}
+                </span>
+              </span>
+              <span className="inbox-story-label">{story.author?.username || story.author?.full_name || "Story"}</span>
+            </button>
+          ))}
+        </div>
         {userResults.length > 0 && (
           <div style={{ padding: "0 20px 12px" }}>
             <div className="search-section-label">Start Chat</div>
@@ -2674,6 +2734,8 @@ function ChatScreen({ user, pendingConv, onConvOpened }) {
           </div>
         );
       })()}
+      {showStoryCreate && <StoryModal user={user} profile={profile} onClose={() => setShowStoryCreate(false)} />}
+      {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} />}
     </div>
   );
 }
@@ -2865,7 +2927,8 @@ export default function VioFashion() {
     } catch {
       // Use the centered left edge when no saved position exists.
     }
-    return { x: 38, y: Math.round((window.innerHeight || 720) * 0.5) };
+    const width = window.innerWidth || 390;
+    return { x: Math.max(24, Math.min(width - 24, 38)), y: Math.round((window.innerHeight || 720) * 0.5) };
   });
   const navDragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0 });
   const [theme, setTheme] = useState(() => localStorage.getItem("vio-theme") || "adaptive");
@@ -2890,6 +2953,7 @@ export default function VioFashion() {
   useEffect(() => { localStorage.setItem("vio-theme", theme); }, [theme]);
   useEffect(() => { localStorage.setItem("vio-chat-theme", chatTheme); }, [chatTheme]);
   useEffect(() => { localStorage.setItem("vio-nav-pos", JSON.stringify(navPos)); }, [navPos]);
+  useEffect(() => { setNavOpen(false); }, [screen]);
   useEffect(() => {
     const update = () => {
       const rect = shellRef.current?.getBoundingClientRect();
@@ -2899,6 +2963,15 @@ export default function VioFashion() {
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
+  useEffect(() => {
+    setNavPos((prev) => {
+      const clamped = {
+        x: Math.min(Math.max(prev.x, 24), shellSize.width - 24),
+        y: Math.min(Math.max(prev.y, 32), shellSize.height - 32),
+      };
+      return clamped.x === prev.x && clamped.y === prev.y ? prev : clamped;
+    });
+  }, [shellSize.width, shellSize.height]);
 
   const handleNav = (id) => { setNavOpen(false); if (id === "post") { setShowUpload(true); return; } setScreen(id); };
   const openChat  = (conv) => { setPendingConv(conv); setScreen("chat"); };
@@ -2913,6 +2986,21 @@ export default function VioFashion() {
       y: Math.min(Math.max(clientY - top, 32), height - 32),
     };
   }, []);
+  const snapNavToEdge = useCallback((point) => {
+    const width = shellSize.width || 390;
+    const height = shellSize.height || 720;
+    const distances = {
+      left: point.x,
+      right: width - point.x,
+      top: point.y,
+      bottom: height - point.y,
+    };
+    const edge = Object.entries(distances).sort((a, b) => a[1] - b[1])[0][0];
+    if (edge === "left") return { x: 24, y: Math.min(Math.max(point.y, 32), height - 32) };
+    if (edge === "right") return { x: width - 24, y: Math.min(Math.max(point.y, 32), height - 32) };
+    if (edge === "top") return { x: Math.min(Math.max(point.x, 24), width - 24), y: 32 };
+    return { x: Math.min(Math.max(point.x, 24), width - 24), y: height - 32 };
+  }, [shellSize.height, shellSize.width]);
   const navPointerDown = (e) => {
     navDragRef.current = { dragging: true, moved: false, startX: e.clientX, startY: e.clientY };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -2930,7 +3018,11 @@ export default function VioFashion() {
     const drag = navDragRef.current;
     navDragRef.current = { ...drag, dragging: false };
     e.currentTarget.releasePointerCapture?.(e.pointerId);
-    if (!drag.moved) setNavOpen(p => !p);
+    if (drag.moved) {
+      setNavPos((prev) => snapNavToEdge(prev));
+      return;
+    }
+    setNavOpen(p => !p);
   };
 
   const dp       = profile || {};
@@ -2938,23 +3030,23 @@ export default function VioFashion() {
 
   const render = () => {
     switch (screen) {
-      case "feed":          return <FeedScreen user={user} profile={profile} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
+      case "feed":          return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
       case "profile":       return <ProfileScreen user={user} profile={profile} onSignOut={signOut} onProfileUpdated={refreshProfile} onSettings={() => setScreen("settings")} />;
       case "market":        return <MarketScreen user={user} profile={profile} />;
-      case "chat":          return <ChatScreen user={user} pendingConv={pendingConv} onConvOpened={() => setPendingConv(null)} />;
+      case "chat":          return <ChatScreen user={user} profile={profile} pendingConv={pendingConv} onConvOpened={() => setPendingConv(null)} />;
       case "live":          return <LiveScreen user={user} profile={profile} />;
       case "search":        return <SearchScreen user={user} profile={profile} onStartChat={openChat} />;
       case "notifications": return <NotificationsScreen user={user} />;
       case "settings":      return <SettingsScreen theme={theme} setTheme={setTheme} chatTheme={chatTheme} setChatTheme={setChatTheme} onProfile={() => setScreen("profile")} onBack={() => setScreen("feed")} />;
-      default:              return <FeedScreen user={user} profile={profile} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
+      default:              return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
     }
   };
 
   const isSecondary = screen === "search" || screen === "notifications";
   const compactNav = true;
-  const navAxis = (navPos.y < 120 || navPos.y > shellSize.height - 120) ? "horizontal" : "vertical";
+  const navAxis = Math.min(navPos.y, shellSize.height - navPos.y) < Math.min(navPos.x, shellSize.width - navPos.x) ? "horizontal" : "vertical";
   const navItems = compactNav
-    ? [...NAV, { id: "profile", label: "Profile", icon: <span style={{ fontSize: 15, fontWeight: 800 }}>{initials(fullName) || "P"}</span> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
+    ? [...NAV, { id: "profile", label: "Profile", icon: <IcoUser /> }, { id: "settings", label: "Settings", icon: <IcoGear /> }]
     : NAV;
   const upperNavItems = navItems.slice(0, 3);
   const lowerNavItems = navItems.slice(3);
