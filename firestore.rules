@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isParticipant(data) {
+      return signedIn() && request.auth.uid in data.participants;
+    }
+
+    match /profiles/{userId} {
+      allow read: if signedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        || (
+          signedIn()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['followers_count'])
+        );
+    }
+
+    match /videos/{videoId} {
+      allow read: if signedIn() && resource.data.is_published == true;
+      allow create: if signedIn() && request.resource.data.creator_id == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.creator_id == request.auth.uid
+        || request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'likes_count',
+          'comments_count',
+          'shares_count',
+          'saves_count',
+          'views_count'
+        ])
+      );
+      allow delete: if signedIn() && resource.data.creator_id == request.auth.uid;
+    }
+
+    match /video_likes/{likeId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow delete: if signedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /video_saves/{saveId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow delete: if signedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /video_comments/{commentId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.author_id == request.auth.uid;
+    }
+
+    match /follows/{followId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.follower_id == request.auth.uid;
+      allow delete: if signedIn() && resource.data.follower_id == request.auth.uid;
+    }
+
+    match /requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.customer_id == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.customer_id == request.auth.uid
+        || request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'bids_count',
+          'status',
+          'updated_at',
+          'payment_ref'
+        ])
+      );
+      allow delete: if signedIn() && resource.data.customer_id == request.auth.uid;
+    }
+
+    match /offers/{offerId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.creator_id == request.auth.uid;
+      allow update: if signedIn();
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if signedIn();
+    }
+
+    match /conversations/{conversationId} {
+      allow read, update, delete: if isParticipant(resource.data);
+      allow create: if isParticipant(request.resource.data);
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.sender_id == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if isOwner(resource.data.user_id);
+      allow create: if signedIn();
+    }
+
+    match /livestreams/{streamId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.creator_id == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.creator_id == request.auth.uid;
+    }
+  }
+}
