@@ -22,18 +22,22 @@ function useFonts() {
 
 // ── Design tokens ─────────────────────────────────────────────
 const T = {
-  black:       '#07050A',
-  deep:        '#0F0B18',
-  card:        '#130F1E',
-  border:      'rgba(255,255,255,0.08)',
-  violet:      '#7C3AED',
-  violetMid:   '#A78BFA',
-  violetLight: '#DDD6FE',
-  gold:        '#C9A84C',
-  goldLight:   '#E8C87A',
-  white:       '#FAFAFA',
-  muted:       'rgba(250,250,250,0.45)',
+  black:       '#F4F1E9',
+  deep:        '#ECE7DA',
+  card:        '#FFFFFF',
+  border:      'rgba(39,32,20,0.18)',
+  violet:      '#7856CC',
+  violetMid:   '#8E6CE0',
+  violetLight: '#B39AF0',
+  gold:        '#B3882F',
+  goldLight:   '#D9B96A',
+  white:       '#1C170F',
+  muted:       'rgba(53,43,25,0.62)',
   error:       '#F87171',
+  success:     '#0E7A3D',
+  fieldBg:     '#F8F7F4',
+  primary:     '#0D6A33',
+  paper:       '#F4F2EC',
   fontDisplay: "'Cormorant Garamond', Georgia, serif",
   fontBody:    "'Jost', system-ui, sans-serif",
 }
@@ -65,24 +69,46 @@ const GLOBAL_CSS = `
   @keyframes vio-spin {
     to { transform: rotate(360deg); }
   }
-  .vio-input::placeholder { color: rgba(250,250,250,0.22) !important; }
-  .vio-input:focus { outline: none !important; border-bottom-color: #7C3AED !important; }
+  @keyframes kente-sweep {
+    from { background-position: 0 0; }
+    to { background-position: 180px 0; }
+  }
+  .vio-input::placeholder { color: rgba(53,43,25,0.46) !important; }
+  .vio-input:focus { outline: none !important; border-color: rgba(120,86,204,0.45) !important; box-shadow: 0 0 0 3px rgba(120,86,204,0.12) !important; }
   .vio-input:-webkit-autofill,
   .vio-input:-webkit-autofill:hover,
   .vio-input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #FAFAFA !important;
-    -webkit-box-shadow: 0 0 0 1000px #130F1E inset !important;
+    -webkit-text-fill-color: #1C170F !important;
+    -webkit-box-shadow: 0 0 0 1000px #F8F7F4 inset !important;
     transition: background-color 5000s;
   }
+  .kente-mini-strip{
+    height:12px;border-radius:8px 8px 0 0;margin-bottom:14px;border:1px solid rgba(39,32,20,0.14);
+    background:
+      repeating-linear-gradient(90deg,#161616 0 10px,#EDC531 10px 22px,#0F7A3A 22px 30px,#CC2B38 30px 42px,#131313 42px 50px),
+      linear-gradient(90deg,rgba(255,255,255,0.08),rgba(0,0,0,0.18));
+    animation:kente-sweep 7s linear infinite;
+  }
+  .auth-paper{
+    background:#FFFFFF;border:1px solid rgba(39,32,20,0.14);border-radius:18px;
+    box-shadow:0 22px 54px rgba(25,20,12,0.14), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  .auth-brand-title{
+    letter-spacing:0.09em;
+    background:linear-gradient(135deg,#141210 20%,#B3882F 72%);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
   .vio-role-btn { cursor:pointer; transition: all 0.2s; }
-  .vio-role-btn:hover { border-color: rgba(167,139,250,0.5) !important; background: rgba(124,58,237,0.12) !important; }
-  .vio-role-btn.sel { border-color: #7C3AED !important; background: rgba(124,58,237,0.2) !important; }
+  .vio-role-btn:hover { border-color: rgba(120,86,204,0.45) !important; background: rgba(120,86,204,0.08) !important; }
+  .vio-role-btn.sel { border-color: #7856CC !important; background: rgba(120,86,204,0.16) !important; }
   .vio-primary-btn { transition: all 0.25s; }
-  .vio-primary-btn:hover:not(:disabled) { transform: translateY(-2px) !important; box-shadow: 0 10px 32px rgba(124,58,237,0.55) !important; }
+  .vio-primary-btn:hover:not(:disabled) { transform: translateY(-2px) !important; box-shadow: 0 10px 24px rgba(13,106,51,0.36) !important; }
   .vio-google-btn { transition: all 0.25s; }
-  .vio-google-btn:hover { border-color: rgba(167,139,250,0.35) !important; background: rgba(124,58,237,0.07) !important; }
+  .vio-google-btn:hover { border-color: rgba(120,86,204,0.35) !important; background: rgba(120,86,204,0.07) !important; }
   .vio-link { transition: color 0.2s; }
-  .vio-link:hover { color: #A78BFA !important; }
+  .vio-link:hover { color: #7856CC !important; }
 `
 
 function injectCSS() {
@@ -99,32 +125,31 @@ function Bg() {
     <div style={{ position:'fixed', inset:0, overflow:'hidden', pointerEvents:'none', zIndex:0 }}>
       <div style={{
         position:'absolute', inset:0,
-        background:`radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,58,237,0.18) 0%, transparent 70%),
-                    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(201,168,76,0.08) 0%, transparent 60%),
-                    #07050A`,
+        background:`radial-gradient(ellipse 70% 40% at 50% -5%, rgba(211,190,139,0.28) 0%, transparent 68%),
+                    radial-gradient(ellipse 60% 45% at 100% 90%, rgba(120,86,204,0.12) 0%, transparent 70%),
+                    #F4F1E9`,
       }}/>
       <div style={{
-        position:'absolute', width:600, height:600, borderRadius:'50%',
-        background:'radial-gradient(circle, rgba(124,58,237,0.13) 0%, transparent 70%)',
-        top:'-200px', left:'-150px',
-        animation:'vio-orb1 18s ease-in-out infinite',
+        position:'absolute',
+        top:0,left:0,right:0,height:26,
+        background:'repeating-linear-gradient(90deg,#141414 0 13px,#F4C327 13px 29px,#0F7A3A 29px 38px,#CF2E40 38px 54px,#1A1A1A 54px 64px)',
+        opacity:0.9,
       }}/>
       <div style={{
-        position:'absolute', width:400, height:400, borderRadius:'50%',
-        background:'radial-gradient(circle, rgba(201,168,76,0.09) 0%, transparent 70%)',
-        bottom:'-100px', right:'-80px',
-        animation:'vio-orb2 22s ease-in-out infinite',
+        position:'absolute',
+        bottom:0,left:0,right:0,height:20,
+        background:'linear-gradient(90deg,rgba(20,20,20,0) 0%,rgba(20,20,20,0.25) 14%,rgba(15,122,58,0.22) 45%,rgba(179,136,47,0.22) 70%,rgba(20,20,20,0) 100%)',
       }}/>
       <div style={{
-        position:'absolute', width:300, height:300, borderRadius:'50%',
-        background:'radial-gradient(circle, rgba(124,58,237,0.09) 0%, transparent 70%)',
-        top:'40%', right:'10%',
-        animation:'vio-orb3 14s ease-in-out infinite',
+        position:'absolute', width:440, height:440, borderRadius:'50%',
+        background:'radial-gradient(circle, rgba(120,86,204,0.08) 0%, transparent 70%)',
+        top:'-120px', right:'-180px',
+        animation:'vio-orb3 16s ease-in-out infinite',
       }}/>
       <svg style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0.025}}>
         <defs>
-          <pattern id="g" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M60 0L0 0 0 60" fill="none" stroke="white" strokeWidth="0.5"/>
+          <pattern id="g" width="52" height="52" patternUnits="userSpaceOnUse">
+            <path d="M52 0L0 0 0 52" fill="none" stroke="black" strokeWidth="0.4"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#g)"/>
@@ -136,39 +161,38 @@ function Bg() {
 // ── Brand ─────────────────────────────────────────────────────
 function Brand() {
   return (
-    <div style={{textAlign:'center', marginBottom:32}}>
+    <div style={{textAlign:'center', marginBottom:24}}>
       <div style={{
-        width:48, height:48, margin:'0 auto 14px',
+        width:44, height:44, margin:'0 auto 12px',
         position:'relative', display:'flex', alignItems:'center', justifyContent:'center',
       }}>
         <div style={{
           width:'100%', height:'100%', borderRadius:'50%',
-          border:`1.5px solid ${T.gold}`,
+          border:`1.4px solid ${T.gold}`,
           display:'flex', alignItems:'center', justifyContent:'center',
+          background:'#fff',
         }}>
           <div style={{
-            width:'55%', height:'55%', borderRadius:'50%',
-            background:`linear-gradient(135deg, ${T.violet}, ${T.gold})`,
+            width:'52%', height:'52%', borderRadius:'50%',
+            background:`linear-gradient(135deg, ${T.violetMid}, ${T.gold})`,
           }}/>
         </div>
         <div style={{
           position:'absolute', inset:-7, borderRadius:'50%',
-          border:'1px solid rgba(201,168,76,0.18)',
+          border:'1px solid rgba(179,136,47,0.22)',
         }}/>
       </div>
       <div style={{
-        fontFamily:T.fontDisplay, fontSize:34, fontWeight:700,
+        fontFamily:T.fontDisplay, fontSize:40, fontWeight:700,
+        lineHeight:1, marginBottom:6, color:T.white,
         letterSpacing:'0.1em',
-        background:`linear-gradient(135deg, ${T.white} 20%, ${T.gold} 55%, ${T.violetMid} 100%)`,
-        WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text',
-        lineHeight:1, marginBottom:6,
       }}>
-        VIOFASHION
+        <span className="auth-brand-title">VIOFASHION</span>
       </div>
       <div style={{
         fontFamily:T.fontBody, fontSize:10, fontWeight:400,
         letterSpacing:'0.35em', textTransform:'uppercase',
-        color:T.gold, opacity:0.75,
+        color:'rgba(28,23,15,0.68)',
       }}>
         Africa's Fashion Platform
       </div>
@@ -179,7 +203,7 @@ function Brand() {
 // ── Input field ───────────────────────────────────────────────
 function Field({ label, type='text', placeholder, value, onChange, autoComplete, half }) {
   return (
-    <div style={{ marginBottom:20, flex: half ? '1 1 calc(50% - 10px)' : '1 1 100%' }}>
+    <div style={{ marginBottom:18, flex: half ? '1 1 calc(50% - 10px)' : '1 1 100%' }}>
       <label style={{
         display:'block', fontFamily:T.fontBody, fontSize:10,
         fontWeight:600, letterSpacing:'0.15em', textTransform:'uppercase',
@@ -195,9 +219,8 @@ function Field({ label, type='text', placeholder, value, onChange, autoComplete,
         onChange={onChange}
         autoComplete={autoComplete || 'off'}
         style={{
-          width:'100%', background:'transparent', border:'none',
-          borderBottom:`1.5px solid rgba(255,255,255,0.12)`,
-          borderRadius:0, padding:'11px 0',
+          width:'100%', background:T.fieldBg, border:`1px solid ${T.border}`,
+          borderRadius:10, padding:'12px 14px',
           color:T.white, fontFamily:T.fontBody, fontSize:15,
           fontWeight:400, letterSpacing:'0.01em',
           caretColor:T.violetMid, display:'block',
@@ -211,9 +234,9 @@ function Field({ label, type='text', placeholder, value, onChange, autoComplete,
 function Divider() {
   return (
     <div style={{display:'flex', alignItems:'center', gap:14, margin:'22px 0'}}>
-      <div style={{flex:1, height:1, background:T.border}}/>
-      <span style={{fontFamily:T.fontBody, fontSize:11, color:T.muted, letterSpacing:'0.1em'}}>or</span>
-      <div style={{flex:1, height:1, background:T.border}}/>
+      <div style={{flex:1, height:1, background:'rgba(39,32,20,0.18)'}}/>
+      <span style={{fontFamily:T.fontBody, fontSize:11, color:'rgba(53,43,25,0.55)', letterSpacing:'0.1em'}}>or</span>
+      <div style={{flex:1, height:1, background:'rgba(39,32,20,0.18)'}}/>
     </div>
   )
 }
@@ -227,14 +250,14 @@ function PrimaryBtn({ onClick, loading, children }) {
       disabled={loading}
       style={{
         width:'100%',
-        background: loading ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, #7C3AED 0%, #6D28D9 50%, #5B21B6 100%)`,
-        border:'none', borderRadius:12,
-        padding:'15px 24px',
-        color:T.white, fontFamily:T.fontBody,
+        background: loading ? 'rgba(13,106,51,0.45)' : T.primary,
+        border:'none', borderRadius:10,
+        padding:'13px 24px',
+        color:'#FFFFFF', fontFamily:T.fontBody,
         fontSize:14, fontWeight:600,
-        letterSpacing:'0.08em', textTransform:'uppercase',
+        letterSpacing:'0.04em', textTransform:'none',
         cursor: loading ? 'not-allowed' : 'pointer',
-        boxShadow:'0 4px 20px rgba(124,58,237,0.35)',
+        boxShadow:'0 5px 14px rgba(13,106,51,0.28)',
         display:'flex', alignItems:'center', justifyContent:'center', gap:10,
       }}
     >
@@ -250,8 +273,8 @@ function Spinner() {
   return (
     <div style={{
       width:15, height:15,
-      border:'2px solid rgba(255,255,255,0.3)',
-      borderTopColor:T.white, borderRadius:'50%',
+      border:'2px solid rgba(255,255,255,0.42)',
+      borderTopColor:'#FFFFFF', borderRadius:'50%',
       animation:'vio-spin 0.7s linear infinite',
     }}/>
   )
@@ -338,6 +361,7 @@ function Login({ onSwitch }) {
   return (
     <div style={{animation:'vio-fadeup 0.45s ease both'}}>
       <Brand/>
+      <div className="kente-mini-strip" />
       <div style={{fontFamily:T.fontDisplay, fontSize:28, fontWeight:300, fontStyle:'italic', color:T.white, marginBottom:4}}>
         Welcome back
       </div>
@@ -348,11 +372,11 @@ function Login({ onSwitch }) {
       <ErrorBox msg={error}/>
       {success && (
         <div style={{
-          background:'rgba(52,211,153,0.1)',
-          border:'1px solid rgba(52,211,153,0.25)',
+          background:'rgba(14,122,61,0.09)',
+          border:'1px solid rgba(14,122,61,0.25)',
           borderRadius:10, padding:'12px 16px',
           marginBottom:20, fontFamily:T.fontBody,
-          fontSize:13, color:'#34D399',
+          fontSize:13, color:T.success,
           animation:'vio-fadein 0.3s ease',
         }}>
           {success}
@@ -365,7 +389,7 @@ function Login({ onSwitch }) {
       <Field label="Password" type="password" placeholder="Your password"
         value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password"/>
 
-      <div style={{textAlign:'right', marginTop:-10, marginBottom:28}}>
+      <div style={{textAlign:'right', marginTop:-8, marginBottom:22}}>
         <span className="vio-link" onClick={forgotPassword} style={{fontFamily:T.fontBody, fontSize:12, color:T.muted, cursor:'pointer'}}>
           Forgot password?
         </span>
@@ -376,8 +400,8 @@ function Login({ onSwitch }) {
       <Divider/>
 
       <button className="vio-google-btn" onClick={googleSignIn} disabled={googleLoading} style={{
-        width:'100%', background:'rgba(255,255,255,0.04)',
-        border:`1px solid ${T.border}`, borderRadius:12,
+        width:'100%', background:'#FFFFFF',
+        border:`1px solid ${T.border}`, borderRadius:10,
         padding:'13px 24px', color:T.white,
         fontFamily:T.fontBody, fontSize:14, fontWeight:500,
         cursor: googleLoading ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
@@ -395,7 +419,7 @@ function Login({ onSwitch }) {
       <div style={{textAlign:'center', marginTop:28, fontFamily:T.fontBody, fontSize:13, color:T.muted, fontWeight:300}}>
         New to VioFashion?{' '}
         <span className="vio-link" onClick={onSwitch}
-          style={{color:T.violetMid, cursor:'pointer', fontWeight:500}}>
+          style={{color:T.gold, cursor:'pointer', fontWeight:600}}>
           Create account
         </span>
       </div>
@@ -438,7 +462,7 @@ function Signup({ onSwitch }) {
 
   if (done) return (
     <div style={{textAlign:'center', animation:'vio-fadeup 0.5s ease both', padding:'20px 0'}}>
-      <div style={{fontSize:52, marginBottom:16}}>✦</div>
+      <div style={{fontSize:52, marginBottom:16, color:T.gold}}>✦</div>
       <div style={{fontFamily:T.fontDisplay, fontSize:32, fontWeight:600, color:T.white, marginBottom:8}}>
         You're in.
       </div>
@@ -454,6 +478,7 @@ function Signup({ onSwitch }) {
   return (
     <div style={{animation:'vio-fadeup 0.45s ease both'}}>
       <Brand/>
+      <div className="kente-mini-strip" />
       <div style={{fontFamily:T.fontDisplay, fontSize:28, fontWeight:300, fontStyle:'italic', color:T.white, marginBottom:4}}>
         Join the movement
       </div>
@@ -492,7 +517,7 @@ function Signup({ onSwitch }) {
               className={`vio-role-btn${form.role===r.value?' sel':''}`}
               onClick={() => setForm(p=>({...p,role:r.value}))}
               style={{
-                background: form.role===r.value ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)',
+                background: form.role===r.value ? 'rgba(120,86,204,0.16)' : '#FFFFFF',
                 border:`1px solid ${form.role===r.value ? T.violet : T.border}`,
                 borderRadius:10, padding:'9px 14px',
                 display:'flex', alignItems:'center', gap:6,
@@ -501,7 +526,7 @@ function Signup({ onSwitch }) {
               <span style={{fontSize:14}}>{r.emoji}</span>
               <span style={{
                 fontFamily:T.fontBody, fontSize:12, fontWeight:500,
-                color: form.role===r.value ? T.violetLight : T.muted,
+                color: form.role===r.value ? T.violet : T.muted,
               }}>
                 {r.label}
               </span>
@@ -515,7 +540,7 @@ function Signup({ onSwitch }) {
       <div style={{textAlign:'center', marginTop:24, fontFamily:T.fontBody, fontSize:13, color:T.muted, fontWeight:300}}>
         Already have an account?{' '}
         <span className="vio-link" onClick={onSwitch}
-          style={{color:T.violetMid, cursor:'pointer', fontWeight:500}}>
+          style={{color:T.gold, cursor:'pointer', fontWeight:600}}>
           Sign in
         </span>
       </div>
@@ -542,48 +567,29 @@ export default function AuthScreens() {
 
       <div style={{
         position:'relative', zIndex:10,
-        width:'100%', maxWidth:460,
+        width:'100%', maxWidth:380,
         margin:'0 auto', padding:'0 16px',
         maxHeight:'100vh', overflowY:'auto',
         scrollbarWidth:'none',
       }}>
-        <div style={{
-          background:'rgba(19,15,30,0.88)',
-          backdropFilter:'blur(28px)',
-          WebkitBackdropFilter:'blur(28px)',
-          border:`1px solid ${T.border}`,
-          borderRadius:24,
-          padding: mode==='signup' ? '36px 32px 32px' : '44px 36px 40px',
-          boxShadow:'0 25px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04)',
+        <div className="auth-paper" style={{
+          padding: mode==='signup' ? '24px 20px 22px' : '24px 20px 24px',
           margin:'20px 0',
-          position:'relative', overflow:'hidden',
+          position:'relative',
+          overflow:'hidden',
         }}>
-          {/* Top gold shimmer */}
-          <div style={{
-            position:'absolute', top:0, left:'15%', right:'15%', height:1,
-            background:`linear-gradient(90deg, transparent, ${T.gold}, transparent)`,
-            opacity:0.55,
-          }}/>
-
           {mode==='login'
             ? <Login  onSwitch={() => setMode('signup')}/>
             : <Signup onSwitch={() => setMode('login')}/>
           }
-
-          {/* Bottom violet shimmer */}
-          <div style={{
-            position:'absolute', bottom:0, left:'25%', right:'25%', height:1,
-            background:`linear-gradient(90deg, transparent, ${T.violet}, transparent)`,
-            opacity:0.35,
-          }}/>
         </div>
 
         <div style={{
           textAlign:'center', paddingBottom:20,
           fontFamily:T.fontBody, fontSize:11,
-          color:'rgba(250,250,250,0.18)', letterSpacing:'0.05em',
+          color:'rgba(53,43,25,0.34)', letterSpacing:'0.05em',
         }}>
-          © 2025 VioFashion · All rights reserved
+          © 2026 VioFashion · All rights reserved
         </div>
       </div>
     </div>
