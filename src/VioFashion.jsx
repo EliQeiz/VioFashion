@@ -15,6 +15,10 @@ import {
   useOffers, useCustomerOrders, useCreatorOrders, updateOrderStatus,
   useNotifications, useSearch, useCreatorAnalytics,
   startLiveStream, endLiveStream, getOrCreateConversation,
+  getMeasurementProfile, saveMeasurementProfile,
+  useCommunityPosts, createCommunityPost, getArtisanDirectory,
+  setSubscriptionTier, useSubscriptionEvents,
+  releaseEscrowForRequest, useEscrowEvents, appendEscrowMilestone, backfillAcceptedCreators,
 } from "./hooks/useFirestore.js";
 
 // ── Paystack ─────────────────────────────────────────────────
@@ -47,6 +51,8 @@ const CSS = `
     --violet:#6D28D9;--vio-mid:#8B5CF6;--vio-lite:#C4B5FD;
     --gold:#C9A84C;--gold-lt:#E8C87A;
     --white:#F8F5EF;--muted:rgba(248,245,239,0.62);
+    --paper:#F4F1E8;--paper-elev:#FFFFFF;--paper-line:rgba(40,32,19,0.16);--paper-muted:rgba(53,43,25,0.62);
+    --kente-forest:#1B3B2C;
     --danger:#F87171;--green:#34D399;
     --kente-black:#121212;--kente-red:#C92A3F;--kente-yellow:#EDC437;--kente-green:#1E7A42;--kente-blue:#2D4AA8;
     --kente-ribbon:repeating-linear-gradient(90deg,var(--kente-black) 0 12px,var(--kente-yellow) 12px 28px,var(--kente-green) 28px 38px,var(--kente-red) 38px 54px,var(--kente-blue) 54px 66px,var(--kente-black) 66px 78px);
@@ -56,22 +62,27 @@ const CSS = `
     --accent-grad:linear-gradient(135deg,#1E7A42,#0F5A31);
   }
   html,body,#root{height:100%;width:100%;overflow:hidden;overscroll-behavior:none;}
-  body{background:linear-gradient(180deg,#F4F1E8 0%,#EDE8DA 100%);color:var(--white);font-family:var(--ff-sans);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;}
+  body{background:var(--ink);color:var(--white);font-family:var(--ff-sans);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;}
+  body[data-vio-theme="adaptive"]{background:linear-gradient(160deg,#0B1912,#102118 40%,#08120D 100%);}
+  body[data-vio-theme="light"]{background:linear-gradient(160deg,#F7F3E9,#ECE5D3 100%);}
+  body[data-vio-theme="black"]{background:linear-gradient(160deg,#020103,#06040A 100%);}
   ::-webkit-scrollbar{width:2px;}::-webkit-scrollbar-thumb{background:var(--violet);border-radius:2px;}
   .shell{position:relative;width:100%;max-width:430px;height:100dvh;min-height:100dvh;margin:0 auto;background:var(--deep);overflow:hidden;box-shadow:0 22px 90px rgba(16,26,19,0.35);touch-action:pan-y;}
   .shell::before{content:'';position:absolute;top:0;left:0;right:0;height:16px;background:var(--kente-ribbon);z-index:210;pointer-events:none;}
-  .shell.theme-light{--ink:#F5F0FF;--deep:#FBF8FF;--surface:#FFFFFF;--elevated:#F1EAFB;--border:rgba(39,26,58,0.12);--white:#171020;--muted:rgba(23,16,32,0.55);--accent-grad:linear-gradient(135deg,#6D28D9,#C9A84C);box-shadow:0 0 120px rgba(201,168,76,0.2);}
-  .shell.theme-black{--ink:#000000;--deep:#030205;--surface:#09060D;--elevated:#100A18;--border:rgba(255,255,255,0.09);--white:#FFFFFF;--muted:rgba(255,255,255,0.44);--accent-grad:linear-gradient(135deg,#111111,#6D28D9);}
+  .shell.theme-adaptive{--ink:#08120D;--deep:#0F1D15;--surface:#18281E;--elevated:#223429;--border:rgba(232,219,181,0.16);--white:#F8F5EF;--muted:rgba(248,245,239,0.62);--paper:#F4F1E8;--paper-elev:#FFFFFF;--paper-line:rgba(40,32,19,0.18);--paper-muted:rgba(53,43,25,0.62);--accent-grad:linear-gradient(135deg,#1E7A42,#0F5A31);}
+  .shell.theme-light{--ink:#F4F1E8;--deep:#F4F1E8;--surface:#FFFFFF;--elevated:#EEE7D5;--border:rgba(39,26,58,0.12);--white:#171020;--muted:rgba(23,16,32,0.55);--paper:#FCFAF4;--paper-elev:#FFFFFF;--paper-line:rgba(39,26,58,0.14);--paper-muted:rgba(23,16,32,0.54);--accent-grad:linear-gradient(135deg,#6D28D9,#C9A84C);box-shadow:0 0 72px rgba(90,70,30,0.18);}
+  .shell.theme-black{--ink:#000000;--deep:#030205;--surface:#09060D;--elevated:#100A18;--border:rgba(255,255,255,0.09);--white:#FFFFFF;--muted:rgba(255,255,255,0.44);--paper:#09060D;--paper-elev:#120C1B;--paper-line:rgba(255,255,255,0.11);--paper-muted:rgba(255,255,255,0.54);--accent-grad:linear-gradient(135deg,#111111,#6D28D9);}
   .shell.chat-gold{--accent-grad:linear-gradient(135deg,var(--gold),#A67C1B);}
   .shell.chat-mono{--accent-grad:linear-gradient(135deg,#27272A,#71717A);}
   .screen-wrap{position:absolute;inset:0;overflow:hidden;overflow-x:hidden;}
-  .shell.screen-chat,.shell.screen-settings,.shell.screen-search,.shell.screen-notifications,.shell.screen-market{
+  .shell.theme-adaptive.screen-chat,.shell.theme-adaptive.screen-settings,.shell.theme-adaptive.screen-search,.shell.theme-adaptive.screen-notifications,.shell.theme-adaptive.screen-market{
     --ink:#F4F1E8;--deep:#F4F1E8;--surface:#FFFFFF;--elevated:#EEE7D5;
     --border:rgba(40,32,19,0.18);--white:#1C170F;--muted:rgba(53,43,25,0.62);
+    --paper:#F4F1E8;--paper-elev:#FFFFFF;--paper-line:rgba(40,32,19,0.18);--paper-muted:rgba(53,43,25,0.62);
     --accent-grad:linear-gradient(135deg,#7856CC,#6543BA);
     box-shadow:0 18px 54px rgba(30,23,14,0.22);
   }
-  .shell.screen-profile,.shell.screen-feed,.shell.screen-live{
+  .shell.theme-adaptive.screen-profile,.shell.theme-adaptive.screen-feed,.shell.theme-adaptive.screen-live{
     --ink:#09140F;--deep:#102118;--surface:#182A1E;--elevated:#22372B;
     --border:rgba(232,219,181,0.16);--white:#F8F5EF;--muted:rgba(248,245,239,0.64);
     --accent-grad:linear-gradient(135deg,#1E7A42,#0F5A31);
@@ -85,9 +96,9 @@ const CSS = `
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
   .nav-pill.compact{left:38px;top:50%;bottom:auto;transform:translate(-50%,-50%);border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;pointer-events:none;touch-action:none;}
   .nav-pill.compact.open{background:transparent !important;border:none !important;box-shadow:none !important;gap:7px;}
-  .nav-pill.compact.open.vertical{height:min(70vh,520px);width:42px;flex-direction:column;align-items:center;justify-content:center;}
+  .nav-pill.compact.open.vertical{height:min(68vh,500px);width:42px;flex-direction:column;align-items:center;justify-content:center;}
   .nav-pill.compact.open.horizontal{width:min(92vw,380px);height:42px;flex-direction:row;align-items:center;justify-content:center;}
-  .nav-roll{display:flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:0;min-width:0;pointer-events:none;}
+  .nav-roll{display:flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;min-height:0;min-width:0;pointer-events:none;}
   .nav-pill.vertical .nav-roll{flex-direction:column;width:100%;}
   .nav-pill.horizontal .nav-roll{flex-direction:row;height:100%;}
   .nav-roll.upper{padding:0;}
@@ -103,19 +114,21 @@ const CSS = `
   .nav-toggle-grid:active{cursor:grabbing;}
   .nav-toggle-grid span{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(201,168,76,0.45);}
   @keyframes nav-orbit{to{transform:rotate(360deg);}}
-  .shell.screen-chat .nav-pill.compact .nav-item,
-  .shell.screen-settings .nav-pill.compact .nav-item,
-  .shell.screen-search .nav-pill.compact .nav-item,
-  .shell.screen-notifications .nav-pill.compact .nav-item,
-  .shell.screen-market .nav-pill.compact .nav-item{
+  .shell.theme-adaptive.screen-chat .nav-pill.compact .nav-item,
+  .shell.theme-adaptive.screen-settings .nav-pill.compact .nav-item,
+  .shell.theme-adaptive.screen-search .nav-pill.compact .nav-item,
+  .shell.theme-adaptive.screen-notifications .nav-pill.compact .nav-item,
+  .shell.theme-adaptive.screen-market .nav-pill.compact .nav-item,
+  .shell.theme-light .nav-pill.compact .nav-item{
     border-color:rgba(40,32,19,0.35);
     background:rgba(255,255,255,0.72);
   }
-  .shell.screen-chat .nav-toggle-grid,
-  .shell.screen-settings .nav-toggle-grid,
-  .shell.screen-search .nav-toggle-grid,
-  .shell.screen-notifications .nav-toggle-grid,
-  .shell.screen-market .nav-toggle-grid{
+  .shell.theme-adaptive.screen-chat .nav-toggle-grid,
+  .shell.theme-adaptive.screen-settings .nav-toggle-grid,
+  .shell.theme-adaptive.screen-search .nav-toggle-grid,
+  .shell.theme-adaptive.screen-notifications .nav-toggle-grid,
+  .shell.theme-adaptive.screen-market .nav-toggle-grid,
+  .shell.theme-light .nav-toggle-grid{
     border-color:rgba(40,32,19,0.58);
     background:rgba(255,255,255,0.78);
   }
@@ -244,7 +257,7 @@ const CSS = `
   .mf-chip{white-space:nowrap;border:1px solid var(--border);color:var(--muted);padding:6px 16px;border-radius:100px;font-family:var(--ff-sans);font-size:11px;font-weight:500;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s;background:transparent;}
   .mf-chip.on{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.08);}
   .post-request-card{margin:0 20px 24px;background:linear-gradient(135deg,rgba(109,40,217,0.15) 0%,rgba(201,168,76,0.08) 100%);border:1px solid rgba(109,40,217,0.25);border-radius:18px;padding:20px;position:relative;overflow:hidden;cursor:pointer;}
-  .post-request-card::before{content:'ATELIER';position:absolute;right:-10px;top:8px;font-family:var(--ff-impact);font-size:64px;color:rgba(109,40,217,0.08);pointer-events:none;}
+  .post-request-card::before{content:'MARKET';position:absolute;right:-10px;top:8px;font-family:var(--ff-impact);font-size:64px;color:rgba(109,40,217,0.08);pointer-events:none;}
   .prc-title{font-family:var(--ff-serif);font-size:18px;font-style:italic;font-weight:400;color:var(--white);margin-bottom:4px;}
   .prc-sub{font-size:11px;font-weight:300;color:var(--muted);margin-bottom:16px;}
   .prc-input-row{display:flex;gap:10px;}
@@ -402,7 +415,7 @@ const CSS = `
   .notif-type-icon{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;border:1.5px solid var(--deep);}
   .notif-type-like{background:#8B5CF6;}.notif-type-follow{background:var(--gold);}.notif-type-comment{background:#3B82F6;}.notif-type-offer{background:var(--green);}
   .notif-body{flex:1;min-width:0;}
-  .notif-text{font-size:13px;font-weight:300;line-height:1.5;color:rgba(28,23,15,0.82);}
+  .notif-text{font-size:13px;font-weight:300;line-height:1.5;color:color-mix(in srgb, var(--white) 84%, transparent);}
   .notif-text strong{font-weight:600;color:var(--white);}
   .notif-meta{font-size:11px;color:var(--muted);margin-top:3px;}
   .notif-price{font-size:12px;font-weight:700;color:var(--gold-lt);margin-top:2px;}
@@ -526,6 +539,350 @@ const CSS = `
   .img-preview-remove{position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(6,4,9,0.8);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--danger);font-size:9px;line-height:1;}
   .img-upload-add{width:64px;height:64px;border-radius:10px;border:1.5px dashed rgba(109,40,217,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--vio-lite);font-size:22px;flex-shrink:0;transition:all 0.2s;}
   .img-upload-add:hover{border-color:var(--violet);background:rgba(109,40,217,0.08);}
+  .shell.screen-chat .chat-outer,
+  .shell.screen-settings .settings-root,
+  .shell.screen-search .search-outer,
+  .shell.screen-notifications .notif-scroll{background:var(--paper);}
+  .shell.screen-chat .chat-head,
+  .shell.screen-notifications .notif-head{background:color-mix(in srgb, var(--paper-elev) 88%, transparent);}
+  .shell.screen-chat .chat-head::before,
+  .shell.screen-notifications .notif-head::before{left:0;right:0;height:11px;border-radius:0;background:var(--kente-ribbon);}
+  .shell.screen-chat .chat-search-bar,
+  .shell.screen-search .search-inp-wrap{background:var(--paper-elev);border-color:var(--paper-line);}
+  .shell.screen-chat .chat-search-bar input,
+  .shell.screen-search .search-inp-wrap input{color:var(--white);}
+  .shell.screen-chat .inbox-story-strip{background:color-mix(in srgb, var(--paper) 80%, transparent);border-bottom:1px solid var(--paper-line);}
+  .shell.screen-chat .chat-row,
+  .shell.screen-search .search-creator-card,
+  .shell.screen-notifications .notif-row{border-bottom:1px solid color-mix(in srgb, var(--paper-line) 65%, transparent);}
+  .shell.screen-chat .chat-row:hover,
+  .shell.screen-search .search-creator-card:hover{background:color-mix(in srgb, var(--gold) 8%, transparent);}
+  .shell.screen-chat .chat-win-head,
+  .shell.screen-chat .chat-inp-bar{background:color-mix(in srgb, var(--paper-elev) 95%, transparent);border-color:var(--paper-line);}
+  .shell.screen-chat .chat-back-btn,
+  .shell.screen-chat .call-ico,
+  .shell.screen-chat .emoji-toggle,
+  .shell.screen-chat .mini-tool-btn{background:var(--paper-elev);border-color:var(--paper-line);}
+  .shell.screen-chat .chat-inp,
+  .shell.screen-chat .mention-search{background:var(--paper-elev);border-color:var(--paper-line);}
+  .shell.screen-chat .msg-wrap.inc .msg-bubble,
+  .shell.screen-chat .msg-menu,
+  .shell.screen-chat .emoji-pop,
+  .shell.screen-chat .emoji-pop button,
+  .shell.screen-chat .mention-pop{background:var(--paper-elev);border-color:var(--paper-line);}
+  .shell.screen-chat .msg-more{background:color-mix(in srgb, var(--paper-elev) 82%, transparent);}
+  .shell.screen-chat .inbox-story-ring{background:conic-gradient(#20C5F8,#21D9D1,#4F46E5,#20C5F8);}
+  .shell.screen-chat .inbox-story-label{color:var(--white);}
+  .shell.screen-chat .search-section-label{color:var(--paper-muted);}
+  .shell.screen-settings .settings-root{
+    height:100%;
+    overflow-y:auto;
+    padding:0 0 100px;
+    scrollbar-width:none;
+  }
+  .shell.screen-settings .settings-root::-webkit-scrollbar{display:none;}
+  .shell.screen-settings .settings-head{
+    position:sticky;top:0;z-index:3;
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:28px 20px 18px;
+    background:var(--paper-elev);
+    border-bottom:1px solid var(--paper-line);
+  }
+  .shell.screen-settings .settings-head::before{
+    content:'';position:absolute;left:0;right:0;top:0;height:11px;background:var(--kente-ribbon);
+  }
+  .shell.screen-settings .settings-title{font-family:var(--ff-serif);font-size:32px;font-style:italic;color:var(--white);line-height:1;}
+  .shell.screen-settings .settings-sub{font-size:12px;color:var(--paper-muted);margin-top:4px;}
+  .shell.screen-settings .settings-close{
+    width:36px;height:36px;border-radius:12px;border:1px solid var(--paper-line);
+    background:var(--paper-elev);color:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .shell.screen-settings .settings-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 20px 0;
+  }
+  .shell.screen-settings .settings-col{display:flex;flex-direction:column;gap:10px;}
+  .shell.screen-settings .settings-label{
+    font-family:var(--ff-serif);font-size:26px;font-style:italic;color:var(--white);margin-bottom:2px;
+  }
+  .shell.screen-settings .settings-choice{
+    width:100%;text-align:left;border:1px solid var(--paper-line);background:var(--paper-elev);color:var(--white);
+    border-radius:12px;padding:12px 13px;cursor:pointer;transition:all .18s;
+  }
+  .shell.screen-settings .settings-choice.on{
+    border-color:var(--gold);
+    box-shadow:0 0 0 1px rgba(201,168,76,0.22) inset;
+    background:color-mix(in srgb, var(--gold) 10%, var(--paper-elev));
+  }
+  .shell.screen-settings .settings-choice small{display:block;color:var(--paper-muted);font-size:12px;margin-top:3px;}
+  .shell.screen-settings .settings-foot{padding:18px 20px 0;}
+  .shell.screen-settings .settings-foot .btn-gold{width:100%;}
+  .shell.screen-profile .profile-scroll{
+    background:
+      radial-gradient(circle at 14% 16%,rgba(255,255,255,0.07),transparent 30%),
+      repeating-linear-gradient(90deg,rgba(255,255,255,0.03) 0 2px,transparent 2px 14px),
+      linear-gradient(140deg,#102118,#1B3B2C 45%,#0F1D15 100%);
+  }
+  .shell.screen-profile .profile-meta{
+    margin:-18px 14px 0;
+    border:1px solid rgba(248,245,239,0.15);
+    border-radius:24px;
+    background:color-mix(in srgb, var(--deep) 76%, transparent);
+    box-shadow:0 18px 38px rgba(6,4,9,0.38);
+    backdrop-filter:blur(9px);
+  }
+  .shell.screen-profile .profile-tabs{
+    margin:16px 14px 14px;
+    border-radius:18px;
+    padding:4px 8px;
+    background:color-mix(in srgb, var(--deep) 86%, transparent);
+  }
+  .shell.theme-light.screen-profile .profile-scroll{
+    background:
+      radial-gradient(circle at 16% 18%,rgba(39,26,58,0.05),transparent 28%),
+      repeating-linear-gradient(90deg,rgba(39,26,58,0.04) 0 2px,transparent 2px 14px),
+      linear-gradient(140deg,#F4F1E8,#EEE7D5 55%,#E9E2CE 100%);
+  }
+  .shell.theme-light.screen-profile .profile-meta{
+    background:rgba(255,255,255,0.9);
+    border-color:var(--paper-line);
+    box-shadow:0 14px 30px rgba(39,26,58,0.12);
+  }
+  .shell.theme-light.screen-profile .service-chip{
+    background:rgba(109,40,217,0.08);
+    color:#4D28A5;
+  }
+  .shell.screen-feed .feed-topbar::before{height:9px;left:0;right:0;border-radius:0;}
+  .shell.screen-feed .feed-tabs-row{gap:14px;}
+  .shell.screen-feed .feed-action-tray{right:14px;padding-right:12px;}
+  .shell.screen-feed .feed-action-tray::before{
+    content:'';position:absolute;top:-14px;bottom:-16px;right:0;width:8px;border-radius:5px;
+    background:linear-gradient(180deg,var(--gold),var(--kente-green),var(--kente-red),var(--kente-blue));
+    opacity:0.85;
+  }
+  .shell.screen-feed .feed-editorial{
+    border-radius:18px 18px 0 0;
+    background:linear-gradient(180deg,transparent 0%,rgba(8,8,14,0.42) 18%,rgba(8,8,14,0.7) 100%);
+    padding-top:18px;
+  }
+  .shell.theme-light.screen-feed .feed-editorial{
+    background:linear-gradient(180deg,transparent 0%,rgba(244,241,232,0.46) 20%,rgba(244,241,232,0.74) 100%);
+  }
+  .shell.theme-light.screen-feed .feed-action-circle{
+    background:rgba(255,255,255,0.84);
+    border-color:var(--paper-line);
+    color:#171020;
+  }
+  .shell.theme-black.screen-chat .chat-outer,
+  .shell.theme-black.screen-settings .settings-root,
+  .shell.theme-black.screen-search .search-outer,
+  .shell.theme-black.screen-notifications .notif-scroll{
+    background:#050309;
+  }
+  .shell.theme-black.screen-chat .chat-head,
+  .shell.theme-black.screen-chat .chat-win-head,
+  .shell.theme-black.screen-chat .chat-inp-bar,
+  .shell.theme-black.screen-notifications .notif-head,
+  .shell.theme-black.screen-settings .settings-head{
+    background:rgba(11,8,18,0.96);
+  }
+  .shell.theme-black.screen-settings .settings-choice,
+  .shell.theme-black.screen-chat .chat-search-bar,
+  .shell.theme-black.screen-chat .chat-inp,
+  .shell.theme-black.screen-search .search-inp-wrap{
+    background:#120C1B;
+    border-color:rgba(255,255,255,0.14);
+  }
+  .feature-root{
+    height:100%;
+    overflow-y:auto;
+    background:var(--paper);
+    padding:0 0 110px;
+    scrollbar-width:none;
+  }
+  .feature-root::-webkit-scrollbar{display:none;}
+  .feature-head{
+    position:sticky;
+    top:0;
+    z-index:3;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    padding:28px 20px 16px;
+    background:color-mix(in srgb,var(--paper-elev) 92%,transparent);
+    border-bottom:1px solid var(--paper-line);
+  }
+  .feature-head::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:10px;
+    background:var(--kente-ribbon);
+  }
+  .feature-title{
+    font-family:var(--ff-serif);
+    font-size:31px;
+    font-style:italic;
+    color:var(--white);
+    line-height:1;
+  }
+  .feature-sub{
+    margin-top:4px;
+    font-size:12px;
+    color:var(--paper-muted);
+  }
+  .feature-back{
+    width:36px;
+    height:36px;
+    flex-shrink:0;
+    border-radius:12px;
+    border:1px solid var(--paper-line);
+    background:var(--paper-elev);
+    color:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .feature-section{padding:16px 20px 0;}
+  .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .kente-card{
+    border:1px solid var(--paper-line);
+    border-radius:15px;
+    background:var(--paper-elev);
+    overflow:hidden;
+  }
+  .kente-card-head{
+    height:7px;
+    background:var(--kente-ribbon);
+  }
+  .kente-card-body{padding:12px 12px 13px;}
+  .kente-card-title{
+    font-family:var(--ff-serif);
+    font-size:20px;
+    color:var(--white);
+    margin-bottom:4px;
+  }
+  .kente-card-sub{
+    font-size:12px;
+    color:var(--paper-muted);
+    line-height:1.45;
+  }
+  .gold-field{
+    width:100%;
+    border:1px solid var(--paper-line);
+    border-radius:12px;
+    background:var(--paper-elev);
+    color:var(--white);
+    padding:11px 13px;
+    font-size:13px;
+    outline:none;
+  }
+  .gold-field::placeholder{color:var(--paper-muted);}
+  .gold-field:focus{border-color:var(--gold);}
+  .kente-btn{
+    border:1px solid rgba(201,168,76,0.42);
+    background:linear-gradient(135deg,#D9B24D,#B98A22);
+    color:#18110A;
+    border-radius:12px;
+    padding:11px 14px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .kente-btn.alt{
+    background:transparent;
+    color:var(--gold);
+  }
+  .mini-label{
+    display:block;
+    margin-bottom:6px;
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--paper-muted);
+  }
+  .m-progress{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    margin-top:10px;
+  }
+  .m-progress-step{
+    flex:1;
+    height:8px;
+    border-radius:100px;
+    background:rgba(201,168,76,0.18);
+    border:1px solid rgba(201,168,76,0.2);
+  }
+  .m-progress-step.on{
+    background:linear-gradient(135deg,#E5BD5E,#B98A22);
+    border-color:rgba(201,168,76,0.45);
+  }
+  .notice-pattern{
+    border:1px solid var(--paper-line);
+    border-radius:13px;
+    background:var(--paper-elev);
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding:10px 12px;
+  }
+  .notice-dot{
+    width:28px;
+    height:28px;
+    flex-shrink:0;
+    border-radius:10px;
+    background:linear-gradient(135deg,#6D28D9,#8B5CF6);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+  }
+  .pill-tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .pill-tabs::-webkit-scrollbar{display:none;}
+  .pill-tab{
+    white-space:nowrap;
+    border:1px solid var(--paper-line);
+    border-radius:999px;
+    background:var(--paper-elev);
+    color:var(--paper-muted);
+    padding:6px 14px;
+    font-size:11px;
+    cursor:pointer;
+  }
+  .pill-tab.on{
+    border-color:var(--gold);
+    color:var(--gold);
+    background:rgba(201,168,76,0.1);
+  }
+  .shell.screen-tools .feature-root,
+  .shell.screen-escrow .feature-root,
+  .shell.screen-subscriptions .feature-root,
+  .shell.screen-admin .feature-root,
+  .shell.screen-community .feature-root{background:var(--paper);}
+  .shell.theme-black.screen-tools .feature-root,
+  .shell.theme-black.screen-escrow .feature-root,
+  .shell.theme-black.screen-subscriptions .feature-root,
+  .shell.theme-black.screen-admin .feature-root,
+  .shell.theme-black.screen-community .feature-root{background:#050309;}
+  .shell.theme-black .feature-head,
+  .shell.theme-black .kente-card,
+  .shell.theme-black .notice-pattern,
+  .shell.theme-black .gold-field,
+  .shell.theme-black .pill-tab,
+  .shell.theme-black .feature-back{background:#120C1B;border-color:rgba(255,255,255,0.12);}
+  .shell.theme-light .kente-btn{color:#19120C;}
   @media (max-width: 768px){
     .shell{max-width:100%;height:100dvh;box-shadow:none;}
     .feed-card{height:100dvh;}
@@ -554,6 +911,15 @@ const CSS = `
     .chat-inp-bar{padding:10px 10px calc(10px + env(safe-area-inset-bottom));gap:8px;}
     .chat-inp{padding:10px 14px;font-size:12px;}
     .chat-send,.emoji-toggle{width:36px;height:36px;}
+    .feature-head{padding:calc(14px + env(safe-area-inset-top)) 12px 12px;}
+    .feature-title{font-size:25px;}
+    .feature-section{padding:12px 12px 0;}
+    .feature-grid{grid-template-columns:1fr;}
+    .settings-grid{grid-template-columns:1fr !important;gap:10px !important;padding:14px 12px 0 !important;}
+    .settings-head{padding:calc(14px + env(safe-area-inset-top)) 12px 12px !important;}
+    .settings-title{font-size:26px !important;}
+    .settings-label{font-size:22px !important;}
+    .settings-foot{padding:14px 12px 0 !important;}
     .live-top{padding:calc(12px + env(safe-area-inset-top)) 12px 0;}
     .live-actions{right:10px;bottom:calc(168px + env(safe-area-inset-bottom));gap:9px;}
     .live-act{width:40px;height:40px;}
@@ -567,10 +933,13 @@ const CSS = `
 `;
 
 function injectCSS() {
-  if (document.getElementById("vio-main-css")) return;
-  const el = document.createElement("style");
-  el.id = "vio-main-css"; el.textContent = CSS;
-  document.head.appendChild(el);
+  let el = document.getElementById("vio-main-css");
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "vio-main-css";
+    document.head.appendChild(el);
+  }
+  if (el.textContent !== CSS) el.textContent = CSS;
 }
 
 // ── Utilities ─────────────────────────────────────────────────
@@ -612,6 +981,10 @@ const IcoCheck    = () => <Ico s={16} d="M20 6L9 17l-5-5" />;
 const IcoX        = () => <Ico s={14} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const IcoGear     = () => <Ico s={18} d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1H4a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 .51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6V4a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 .51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.34.58.6 1H20a2 2 0 1 1 0 4h-.09c-.26.42-.46.69-.51 1z" />;
 const IcoUser     = () => <Ico d="M20 21a8 8 0 0 0-16 0 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+const IcoUsers    = () => <Ico d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />;
+const IcoSpark    = () => <Ico d="M12 2l2.2 5.6L20 10l-5.8 2.4L12 18l-2.2-5.6L4 10l5.8-2.4z" />;
+const IcoCrown    = () => <Ico d="M3 18l2-11 5 5 4-7 4 7 5-5 2 11H3z M3 18h20v3H3z" />;
+const IcoShield   = () => <Ico d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z" />;
 const IcoMusic    = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>);
 const IcoX2       = () => <Ico s={16} sw={2} d="M18 6L6 18 M6 6l12 12" />;
 const Spinner = () => <div className="spin-wrap"><div className="spin" /></div>;
@@ -2316,7 +2689,7 @@ function ProfileScreen({ user, profile, onSignOut, onProfileUpdated, onSettings 
         <input ref={coverRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadCover} />
         <div className="profile-hero">
           <div className="profile-hero-bg" style={{ background: dp.banner_url ? `url(${dp.banner_url}) center/cover` : PALETTES[0] }}>
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.1 }}><span style={{ fontFamily: "var(--ff-impact)", fontSize: 160, color: "#fff", letterSpacing: -6 }}>ATELIER</span></div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.1 }}><span style={{ fontFamily: "var(--ff-impact)", fontSize: 150, color: "#fff", letterSpacing: -4 }}>VIOFASHION</span></div>
           </div>
           <div className="profile-hero-grad" />
           <div className="profile-hero-name">{first}<br />{last}</div>
@@ -3008,7 +3381,572 @@ function LiveScreen({ user, profile }) {
 // ════════════════════════════════════════════════════════════
 //  ROOT
 // ════════════════════════════════════════════════════════════
-function SettingsScreen({ theme, setTheme, chatTheme, setChatTheme, onProfile, onBack }) {
+function MilestoneBar({ stage = 0 }) {
+  const steps = [0, 1, 2, 3, 4];
+  return (
+    <div className="m-progress">
+      {steps.map(step => <span key={step} className={`m-progress-step ${step <= stage ? "on" : ""}`} />)}
+    </div>
+  );
+}
+
+function ToolsScreen({ user, onBack }) {
+  const [form, setForm] = useState({ height: "", chest: "", waist: "", hips: "", inseam: "", shoulder: "" });
+  const [fit, setFit] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
+  const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user?.uid) {
+        if (mounted) setLoading(false);
+        return;
+      }
+      try {
+        const existing = await getMeasurementProfile(user.uid);
+        if (!mounted || !existing) return;
+        setForm({
+          height: existing.height || "",
+          chest: existing.chest || "",
+          waist: existing.waist || "",
+          hips: existing.hips || "",
+          inseam: existing.inseam || "",
+          shoulder: existing.shoulder || "",
+        });
+        if (existing.generated_fit) setFit(existing.generated_fit);
+      } catch {
+        // Keep local blank state if profile has no saved measurements.
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?.uid]);
+
+  const generate = () => {
+    const chest = Number(form.chest || 0);
+    const waist = Number(form.waist || 0);
+    const hips = Number(form.hips || 0);
+    const score = (chest + waist + hips) / 3;
+    const size = score < 78 ? "XS" : score < 88 ? "S" : score < 98 ? "M" : score < 108 ? "L" : "XL";
+    const cut = hips - waist > 18 ? "Curved Fit" : "Classic Fit";
+    const advice = chest > 104 ? "Use reinforced shoulder seam and deeper armhole." : "Use relaxed armhole and light lining.";
+    setFit({ size, cut, advice });
+  };
+
+  const saveProfile = async () => {
+    if (!user?.uid) return;
+    setSaving(true);
+    try {
+      await saveMeasurementProfile({
+        userId: user.uid,
+        payload: { ...form, generated_fit: fit || null },
+      });
+      setNotice("Measurement profile saved.");
+    } catch (err) {
+      setNotice(err.message || "Could not save measurement profile.");
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setNotice(""), 2400);
+    }
+  };
+
+  return (
+    <div className="feature-root">
+      <div className="feature-head">
+        <div><div className="feature-title">Measure & AI</div><div className="feature-sub">Precision sizing, fit intelligence, and design prep.</div></div>
+        <button className="feature-back" onClick={onBack}><IcoBack /></button>
+      </div>
+      <div className="feature-section">
+        <div className="feature-grid">
+          {loading && <div style={{ fontSize: 12, color: "var(--paper-muted)" }}>Loading saved profile...</div>}
+          {[["Height (cm)", "height"], ["Chest (cm)", "chest"], ["Waist (cm)", "waist"], ["Hips (cm)", "hips"], ["Inseam (cm)", "inseam"], ["Shoulder (cm)", "shoulder"]].map(([label, key]) => (
+            <div key={key}>
+              <label className="mini-label">{label}</label>
+              <input className="gold-field" value={form[key]} onChange={update(key)} placeholder="0" inputMode="decimal" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="feature-section" style={{ display: "flex", gap: 10 }}>
+        <button className="kente-btn" onClick={generate}>Generate Fit</button>
+        <button className="kente-btn alt" onClick={saveProfile} disabled={saving}>{saving ? "Saving..." : "Save Profile"}</button>
+      </div>
+      <div className="feature-section">
+        <div className="kente-card">
+          <div className="kente-card-head" />
+          <div className="kente-card-body">
+            <div className="kente-card-title">Virtual Pattern Guidance</div>
+            <div className="kente-card-sub">Base model adapts to your measurement profile for tailoring and drape previews.</div>
+            <MilestoneBar stage={fit ? 4 : 2} />
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div className="notice-pattern"><span className="notice-dot"><IcoSpark /></span><div><strong>Suggested Size</strong><br /><small>{fit?.size || "Run generator"}</small></div></div>
+              <div className="notice-pattern"><span className="notice-dot"><IcoUser /></span><div><strong>Body Cut</strong><br /><small>{fit?.cut || "Awaiting profile"}</small></div></div>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: "var(--paper-muted)" }}>{fit?.advice || "Add measurements and generate fit to unlock construction guidance."}</div>
+          </div>
+        </div>
+      </div>
+      {notice && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">✓</span><div style={{ fontSize: 12 }}>{notice}</div></div></div>}
+    </div>
+  );
+}
+
+function EscrowEventList({ requestId }) {
+  const { events, loading } = useEscrowEvents(requestId, 6);
+  if (!requestId) return null;
+  if (loading) return <div style={{ marginTop: 8, fontSize: 11, color: "var(--paper-muted)" }}>Loading timeline...</div>;
+  if (events.length === 0) return <div style={{ marginTop: 8, fontSize: 11, color: "var(--paper-muted)" }}>No escrow events yet.</div>;
+  return (
+    <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+      {events.map((event) => (
+        <div key={event.id} style={{ border: "1px solid var(--paper-line)", borderRadius: 10, padding: "7px 9px", background: "color-mix(in srgb, var(--paper-elev) 94%, transparent)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "capitalize" }}>{event.type?.replace("_", " ") || "Update"}</div>
+          <div style={{ fontSize: 10, color: "var(--paper-muted)" }}>{event.label || event.status_after || "Escrow activity"}</div>
+          <div style={{ fontSize: 10, color: "var(--paper-muted)", marginTop: 2 }}>{timeAgo(event.created_at)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EscrowScreen({ user, profile, onBack }) {
+  const isCreator = CREATOR_ROLES.includes(profile?.role);
+  const { orders: customerOrders, loading: loadingCustomer, reload: reloadCustomer } = useCustomerOrders(!isCreator ? user?.uid : null);
+  const { orders: creatorOrders, loading: loadingCreator, reload: reloadCreator } = useCreatorOrders(isCreator ? user?.uid : null);
+  const [busyRequest, setBusyRequest] = useState("");
+  const [notice, setNotice] = useState("");
+  const orders = isCreator ? creatorOrders : customerOrders;
+  const loading = isCreator ? loadingCreator : loadingCustomer;
+
+  const releaseEscrow = async (requestId) => {
+    if (!requestId || !user?.uid) return;
+    setBusyRequest(requestId);
+    try {
+      await releaseEscrowForRequest({ requestId, actorId: user.uid });
+      await (isCreator ? reloadCreator() : reloadCustomer());
+      setNotice("Escrow released successfully.");
+    } catch (err) {
+      setNotice(err.message || "Could not release escrow.");
+    }
+    setBusyRequest("");
+    window.setTimeout(() => setNotice(""), 2500);
+  };
+
+  const advanceMilestone = async (requestId, nextStage, label, participants) => {
+    if (!requestId || !user?.uid) return;
+    setBusyRequest(requestId);
+    try {
+      await appendEscrowMilestone({
+        requestId,
+        actorId: user.uid,
+        participants: (participants || []).filter(Boolean),
+        label,
+        stage: nextStage,
+      });
+      await (isCreator ? reloadCreator() : reloadCustomer());
+      setNotice("Milestone updated.");
+    } catch (err) {
+      setNotice(err.message || "Could not update milestone.");
+    }
+    setBusyRequest("");
+    window.setTimeout(() => setNotice(""), 2200);
+  };
+
+  const normalize = (order) => {
+    if (isCreator) {
+      const customerId = order.request?.customer_id || null;
+      return {
+        id: order.id,
+        requestId: order.request?.id,
+        status: order.request?.status || "pending",
+        milestoneStage: typeof order.request?.milestone_stage === "number" ? order.request.milestone_stage : null,
+        title: order.request?.title || "Commission",
+        counterparty: order.request?.customer?.full_name || order.request?.customer?.username || "Customer",
+        budget: order.price || order.request?.budget || null,
+        participants: [user?.uid, customerId].filter(Boolean),
+      };
+    }
+    const creatorId = order.accepted_offer?.[0]?.creator_id || null;
+    return {
+      id: order.id,
+      requestId: order.id,
+      status: order.status || "pending",
+      milestoneStage: typeof order.milestone_stage === "number" ? order.milestone_stage : null,
+      title: order.title || "Commission",
+      counterparty: order.accepted_offer?.[0]?.creator?.full_name || order.accepted_offer?.[0]?.creator?.username || "Creator",
+      budget: order.accepted_offer?.[0]?.price || order.budget || null,
+      participants: [user?.uid, creatorId].filter(Boolean),
+    };
+  };
+  const stageFromStatus = (status) => {
+    if (status === "open" || status === "pending") return 0;
+    if (status === "in_progress") return 2;
+    if (status === "completed") return 3;
+    if (status === "paid") return 4;
+    return 1;
+  };
+
+  return (
+    <div className="feature-root">
+      <div className="feature-head">
+        <div><div className="feature-title">Escrow Hub</div><div className="feature-sub">Track milestones, logistics readiness, and secure release.</div></div>
+        <button className="feature-back" onClick={onBack}><IcoBack /></button>
+      </div>
+      <div className="feature-section"><div className="notice-pattern"><span className="notice-dot"><IcoShield /></span><div><strong>Secure Escrow:</strong><br /><small>Funds release only when milestones are approved by both parties.</small></div></div></div>
+      {loading && <Spinner />}
+      {!loading && orders.length === 0 && <div className="feature-section"><div className="kente-card"><div className="kente-card-head" /><div className="kente-card-body"><div className="kente-card-title">No Active Orders</div><div className="kente-card-sub">Accepted commissions and escrow milestones will appear here.</div></div></div></div>}
+      {!loading && orders.map((raw) => {
+        const order = normalize(raw);
+        const stage = typeof order.milestoneStage === "number" ? order.milestoneStage : stageFromStatus(order.status);
+        return (
+          <div className="feature-section" key={order.id}>
+            <div className="kente-card">
+              <div className="kente-card-head" />
+              <div className="kente-card-body">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <div><div className="kente-card-title" style={{ marginBottom: 1 }}>{order.title}</div><div className="kente-card-sub">with {order.counterparty}</div></div>
+                  {order.budget && <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>GH₵ {Number(order.budget).toLocaleString()}</div>}
+                </div>
+                <MilestoneBar stage={stage} />
+                <div style={{ marginTop: 9, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--paper-muted)" }}><span>Commission</span><span>Accepted</span><span>In Work</span><span>Delivered</span><span>Paid</span></div>
+                <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="pill-tab on">{order.status.replace("_", " ")}</button>
+                  {isCreator && stage < 3 && <button className="kente-btn alt" disabled={busyRequest === order.requestId} onClick={() => advanceMilestone(order.requestId, Math.min(stage + 1, 3), stage < 2 ? "Work progressed" : "Marked as delivered", order.participants)}>{busyRequest === order.requestId ? "Updating..." : "Advance Milestone"}</button>}
+                  {!isCreator && (order.status === "completed" || order.status === "in_progress") && <button className="kente-btn" disabled={busyRequest === order.requestId} onClick={() => releaseEscrow(order.requestId)}>{busyRequest === order.requestId ? "Processing..." : "Release Escrow"}</button>}
+                </div>
+                <EscrowEventList requestId={order.requestId} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {notice && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">✓</span><div style={{ fontSize: 12 }}>{notice}</div></div></div>}
+    </div>
+  );
+}
+
+function CommunityScreen({ user, onBack, onStartChat }) {
+  const [tab, setTab] = useState("forums");
+  const [text, setText] = useState("");
+  const [queryStr, setQueryStr] = useState("");
+  const [people, setPeople] = useState([]);
+  const [loadingPeople, setLoadingPeople] = useState(false);
+  const { posts, loading: loadingPosts, error: postsError } = useCommunityPosts(50);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    const t = window.setTimeout(async () => {
+      setLoadingPeople(true);
+      try {
+        setPeople(await getArtisanDirectory({ needle: queryStr, limitCount: 24 }));
+      } finally {
+        setLoadingPeople(false);
+      }
+    }, queryStr.trim() ? 220 : 90);
+    return () => window.clearTimeout(t);
+  }, [queryStr]);
+
+  const publish = async () => {
+    const content = text.trim();
+    if (!content || !user?.uid) return;
+    try {
+      await createCommunityPost({ authorId: user.uid, content });
+      setText("");
+      setNotice("Community post published.");
+    } catch (err) {
+      setNotice(err.message || "Could not publish right now.");
+    }
+    window.setTimeout(() => setNotice(""), 2200);
+  };
+
+  const startConversation = async (person) => {
+    if (!user?.uid || !person?.id || person.id === user.uid) return;
+    const conv = await getOrCreateConversation(user.uid, person.id);
+    onStartChat?.({ ...conv, other: person, participants: conv.participants || [user.uid, person.id] });
+  };
+
+  return (
+    <div className="feature-root">
+      <div className="feature-head">
+        <div><div className="feature-title">Community</div><div className="feature-sub">Forums, artisan directory, and collaboration discovery.</div></div>
+        <button className="feature-back" onClick={onBack}><IcoBack /></button>
+      </div>
+      <div className="feature-section"><div className="pill-tabs">{[["forums", "Community Forum"], ["directory", "Artisan Directory"]].map(([id, label]) => <button key={id} className={`pill-tab ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>{label}</button>)}</div></div>
+      {tab === "forums" && (
+        <>
+          <div className="feature-section">
+            <label className="mini-label">Post to Community</label>
+            <textarea className="gold-field" rows={3} value={text} maxLength={600} onChange={(e) => setText(e.target.value)} placeholder="Ask, share, or collaborate..." />
+            <div style={{ marginTop: 6, fontSize: 10, color: "var(--paper-muted)", textAlign: "right" }}>{text.length}/600</div>
+            <div style={{ marginTop: 8 }}><button className="kente-btn" onClick={publish} disabled={text.trim().length < 2 || text.trim().length > 600}>Publish</button></div>
+          </div>
+          {loadingPosts && <Spinner />}
+          {postsError && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">!</span><div style={{ fontSize: 12 }}>{postsError}</div></div></div>}
+          {!loadingPosts && posts.map((post, i) => (
+            <div className="feature-section" key={post.id}>
+              <div className="notice-pattern">
+                <span className="notice-dot" style={{ background: PALETTES[i % PALETTES.length] }}>{post.author?.avatar_url ? <img src={post.author.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(post.author?.full_name || post.author?.username || "A")}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{post.author?.full_name || post.author?.username || "Member"}</div>
+                  <div style={{ fontSize: 12, color: "var(--paper-muted)", marginTop: 2, lineHeight: 1.5 }}>{post.content}</div>
+                  <div style={{ fontSize: 10, color: "var(--paper-muted)", marginTop: 4 }}>{timeAgo(post.created_at)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      {tab === "directory" && (
+        <>
+          <div className="feature-section">
+            <label className="mini-label">Search Directory</label>
+            <input className="gold-field" placeholder="Find artisans, designers, tailors..." value={queryStr} onChange={(e) => setQueryStr(e.target.value)} />
+          </div>
+          {loadingPeople && <Spinner />}
+          {!loadingPeople && people.map((person, i) => (
+            <div className="feature-section" key={person.id}>
+              <div className="notice-pattern">
+                <span className="notice-dot" style={{ background: PALETTES[i % PALETTES.length] }}>{person.avatar_url ? <img src={person.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(person.full_name || person.username || "A")}</span>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700 }}>{person.full_name || person.username}</div><div style={{ fontSize: 11, color: "var(--paper-muted)" }}>{ROLE_EMOJI[person.role] || "✦"} {String(person.role || "creator").replace("_", " ")}</div></div>
+                <button className="kente-btn alt" onClick={() => startConversation(person)}>Message</button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      {notice && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">✓</span><div style={{ fontSize: 12 }}>{notice}</div></div></div>}
+    </div>
+  );
+}
+
+function SubscriptionsScreen({ user, profile, onBack }) {
+  const plans = [
+    { id: "free", name: "Starter", price: "Free", perks: "Post, follow, comment, and message" },
+    { id: "pro", name: "Pro Creator", price: "GH₵29/mo", perks: "Priority placement, analytics depth, custom storefront" },
+    { id: "elite", name: "Atelier Elite", price: "GH₵79/mo", perks: "Escrow perks, AI fitting suite, premium badge" },
+  ];
+  const [tier, setTier] = useState(profile?.subscription_tier || "free");
+  const { events: subEvents, loading: loadingEvents } = useSubscriptionEvents(user?.uid, 12);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setTier(profile?.subscription_tier || "free");
+  }, [profile?.subscription_tier]);
+
+  const choose = async (nextTier) => {
+    setTier(nextTier);
+    if (!user?.uid) return;
+    try {
+      await setSubscriptionTier({ userId: user.uid, tier: nextTier });
+      setNotice(`Subscription set to ${nextTier}.`);
+    } catch (err) {
+      setNotice(err.message || "Could not update subscription.");
+    }
+    window.setTimeout(() => setNotice(""), 2200);
+  };
+
+  return (
+    <div className="feature-root">
+      <div className="feature-head">
+        <div><div className="feature-title">Subscriptions</div><div className="feature-sub">Creator growth plans, badges, and platform rewards.</div></div>
+        <button className="feature-back" onClick={onBack}><IcoBack /></button>
+      </div>
+      <div className="feature-section"><div className="feature-grid">{plans.map((plan) => (
+        <div className="kente-card" key={plan.id}>
+          <div className="kente-card-head" />
+          <div className="kente-card-body">
+            <div className="kente-card-title">{plan.name}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--gold)", marginBottom: 4 }}>{plan.price}</div>
+            <div className="kente-card-sub">{plan.perks}</div>
+            <div style={{ marginTop: 10 }}><button className={`kente-btn ${tier === plan.id ? "alt" : ""}`} onClick={() => choose(plan.id)}>{tier === plan.id ? "Active Plan" : "Select Plan"}</button></div>
+          </div>
+        </div>
+      ))}</div></div>
+      <div className="feature-section">
+        <div className="kente-card">
+          <div className="kente-card-head" />
+          <div className="kente-card-body">
+            <div className="kente-card-title">Gamification Path</div>
+            <div className="kente-card-sub">Earn badges by posting consistently, responding quickly, and keeping high ratings.</div>
+            <div style={{ marginTop: 11, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              {[["Rising", "3 posts"], ["Trusted", "10 orders"], ["Elite", "4.8+ rating"]].map(([name, need]) => (
+                <div key={name} className="notice-pattern" style={{ flexDirection: "column", alignItems: "center", textAlign: "center", gap: 6 }}>
+                  <span className="notice-dot"><IcoCrown /></span>
+                  <strong style={{ fontSize: 12 }}>{name}</strong>
+                  <small style={{ fontSize: 10, color: "var(--paper-muted)" }}>{need}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="feature-section">
+        <div className="kente-card">
+          <div className="kente-card-head" />
+          <div className="kente-card-body">
+            <div className="kente-card-title">Subscription Activity</div>
+            <div className="kente-card-sub">Recent account-level plan changes.</div>
+            {loadingEvents && <div style={{ marginTop: 8, fontSize: 11, color: "var(--paper-muted)" }}>Loading activity...</div>}
+            {!loadingEvents && subEvents.length === 0 && <div style={{ marginTop: 8, fontSize: 11, color: "var(--paper-muted)" }}>No events yet.</div>}
+            {!loadingEvents && subEvents.map((event) => (
+              <div key={event.id} style={{ marginTop: 8, border: "1px solid var(--paper-line)", borderRadius: 10, padding: "8px 10px" }}>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{String(event.tier || "free").toUpperCase()} plan selected</div>
+                <div style={{ fontSize: 10, color: "var(--paper-muted)" }}>{timeAgo(event.created_at)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {notice && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">✓</span><div style={{ fontSize: 12 }}>{notice}</div></div></div>}
+    </div>
+  );
+}
+
+function AdminScreen({ user, profile, onBack }) {
+  const isAdminView = ["admin", "owner", "super_admin"].includes(profile?.role);
+  const [metrics, setMetrics] = useState({ users: 0, creators: 0, videos: 0, requests: 0, openStreams: 0, alerts: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [repairing, setRepairing] = useState(false);
+  const [repairNotice, setRepairNotice] = useState("");
+
+  useEffect(() => {
+    if (!isAdminView) {
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const [profilesSnap, videosSnap, requestsSnap, streamsSnap] = await Promise.all([
+          getDocs(query(collection(db, "profiles"), limit(300))),
+          getDocs(query(collection(db, "videos"), where("is_published", "==", true), orderBy("created_at", "desc"), limit(300))),
+          getDocs(query(collection(db, "requests"), limit(300))),
+          getDocs(query(collection(db, "livestreams"), where("is_active", "==", true), limit(30))),
+        ]);
+        const profiles = profilesSnap.docs.map((d) => d.data());
+        const requests = requestsSnap.docs.map((d) => d.data());
+        const creators = profiles.filter((p) => CREATOR_ROLES.includes(p.role)).length;
+        const pendingEscrow = requests.filter((r) => r.status === "completed" || r.status === "in_progress").length;
+        setMetrics({
+          users: profiles.length,
+          creators,
+          videos: videosSnap.size,
+          requests: requestsSnap.size,
+          openStreams: streamsSnap.size,
+          alerts: pendingEscrow,
+        });
+        setError("");
+      } catch (err) {
+        console.error("Failed to load admin metrics", err);
+        setError(err?.message || "Unable to load admin metrics.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isAdminView, user?.uid, profile?.role]);
+
+  if (!isAdminView) {
+    return (
+      <div className="feature-root">
+        <div className="feature-head">
+          <div><div className="feature-title">Data & Admin</div><div className="feature-sub">This workspace is restricted to admin accounts.</div></div>
+          <button className="feature-back" onClick={onBack}><IcoBack /></button>
+        </div>
+        <div className="feature-section">
+          <div className="kente-card">
+            <div className="kente-card-head" />
+            <div className="kente-card-body">
+              <div className="kente-card-title">Access Restricted</div>
+              <div className="kente-card-sub">Switch to an admin profile to view platform analytics and moderation data.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const bars = [
+    { label: "Users", value: metrics.users, color: "#6D28D9" },
+    { label: "Creators", value: metrics.creators, color: "#1E7A42" },
+    { label: "Posts", value: metrics.videos, color: "#C9A84C" },
+    { label: "Orders", value: metrics.requests, color: "#2D4AA8" },
+  ];
+  const max = Math.max(1, ...bars.map((b) => b.value));
+
+  const runBackfill = async () => {
+    if (repairing) return;
+    setRepairing(true);
+    try {
+      const fixed = await backfillAcceptedCreators(400);
+      setRepairNotice(fixed > 0 ? `Repaired ${fixed} request(s).` : "No requests needed repair.");
+    } catch (err) {
+      setRepairNotice(err?.message || "Backfill failed.");
+    } finally {
+      setRepairing(false);
+      window.setTimeout(() => setRepairNotice(""), 2600);
+    }
+  };
+
+  return (
+    <div className="feature-root">
+      <div className="feature-head">
+        <div><div className="feature-title">Data & Admin</div><div className="feature-sub">Platform health, moderation cues, and operational insights.</div></div>
+        <button className="feature-back" onClick={onBack}><IcoBack /></button>
+      </div>
+      {loading && <Spinner />}
+      {!loading && error && <div className="feature-section"><div className="notice-pattern"><span className="notice-dot">!</span><div style={{ fontSize: 12 }}>{error}</div></div></div>}
+      {!loading && (
+        <>
+          <div className="feature-section"><div className="feature-grid">{[["Total Users", metrics.users], ["Active Creators", metrics.creators], ["Published Posts", metrics.videos], ["Open Streams", metrics.openStreams], ["Commission Requests", metrics.requests], ["Escrow Alerts", metrics.alerts]].map(([label, value]) => (
+            <div key={label} className="kente-card">
+              <div className="kente-card-head" />
+              <div className="kente-card-body">
+                <div style={{ fontSize: 11, color: "var(--paper-muted)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 28, fontFamily: "var(--ff-serif)", color: "var(--white)" }}>{fmt(value)}</div>
+              </div>
+            </div>
+          ))}</div></div>
+          <div className="feature-section">
+            <div className="kente-card">
+              <div className="kente-card-head" />
+              <div className="kente-card-body">
+                <div className="kente-card-title">Trend Dashboard</div>
+                <div className="kente-card-sub">Realtime growth view for the beta cohort.</div>
+                <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "flex-end", height: 140 }}>
+                  {bars.map((bar) => (
+                    <div key={bar.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: "100%", borderRadius: 8, height: `${Math.max(10, (bar.value / max) * 100)}%`, background: `linear-gradient(180deg,${bar.color},rgba(10,10,16,0.35))` }} />
+                      <span style={{ fontSize: 10, color: "var(--paper-muted)" }}>{bar.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="feature-section">
+            <div className="kente-card">
+              <div className="kente-card-head" />
+              <div className="kente-card-body">
+                <div className="kente-card-title">Production Repair Tools</div>
+                <div className="kente-card-sub">Backfill accepted creator links on legacy requests so escrow/status updates stay compliant with tightened rules.</div>
+                <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <button className="kente-btn alt" onClick={runBackfill} disabled={repairing}>{repairing ? "Repairing..." : "Backfill Accepted Creators"}</button>
+                  {repairNotice && <span style={{ fontSize: 11, color: "var(--paper-muted)" }}>{repairNotice}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SettingsScreen({ theme, setTheme, chatTheme, setChatTheme, onProfile, onBack, onTools, onEscrow, onCommunity, onSubscriptions, onAdmin }) {
   const themeChoices = [
     ["adaptive", "Adaptive", "Keeps the current VioFashion look."],
     ["light", "White", "Bright mode for daytime use."],
@@ -3019,32 +3957,45 @@ function SettingsScreen({ theme, setTheme, chatTheme, setChatTheme, onProfile, o
     ["gold", "Gold", "Warmer message styling."],
     ["mono", "Mono", "Quiet neutral chat styling."],
   ];
-  const choiceStyle = (active) => ({
-    width: "100%", textAlign: "left", border: `1px solid ${active ? "var(--gold)" : "var(--border)"}`,
-    background: active ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)", color: "var(--white)",
-    borderRadius: 14, padding: "13px 14px", cursor: "pointer", marginBottom: 10,
-  });
   return (
-    <div className="profile-scroll">
-      <div className="notif-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div><div className="chat-head-title" style={{ marginBottom: 2 }}>Settings</div><div style={{ color: "var(--muted)", fontSize: 12 }}>Themes, profile, and chat style</div></div>
-        <button className="chat-back-btn" onClick={onBack}><IcoX /></button>
+    <div className="settings-root">
+      <div className="settings-head">
+        <div>
+          <div className="settings-title">Settings</div>
+          <div className="settings-sub">Themes, profile, and chat style</div>
+        </div>
+        <button className="settings-close" onClick={onBack}><IcoX /></button>
       </div>
-      <div style={{ padding: 20 }}>
-        <div className="section-head">App Theme</div>
-        {themeChoices.map(([id, label, sub]) => (
-          <button key={id} style={choiceStyle(theme === id)} onClick={() => setTheme(id)}>
-            <strong>{label}</strong><br /><span style={{ color: "var(--muted)", fontSize: 12 }}>{sub}</span>
-          </button>
-        ))}
-        <div className="section-head" style={{ marginTop: 22 }}>Chat Theme</div>
-        {chatChoices.map(([id, label, sub]) => (
-          <button key={id} style={choiceStyle(chatTheme === id)} onClick={() => setChatTheme(id)}>
-            <strong>{label}</strong><br /><span style={{ color: "var(--muted)", fontSize: 12 }}>{sub}</span>
-          </button>
-        ))}
-        <div className="section-head" style={{ marginTop: 22 }}>Profile</div>
-        <button className="btn-gold" onClick={onProfile} style={{ width: "100%" }}>Edit Profile</button>
+      <div className="settings-grid">
+        <div className="settings-col">
+          <div className="settings-label">App Theme</div>
+          {themeChoices.map(([id, label, sub]) => (
+            <button key={id} className={`settings-choice ${theme === id ? "on" : ""}`} onClick={() => setTheme(id)}>
+              <strong>{label}</strong>
+              <small>{sub}</small>
+            </button>
+          ))}
+        </div>
+        <div className="settings-col">
+          <div className="settings-label">Chat Theme</div>
+          {chatChoices.map(([id, label, sub]) => (
+            <button key={id} className={`settings-choice ${chatTheme === id ? "on" : ""}`} onClick={() => setChatTheme(id)}>
+              <strong>{label}</strong>
+              <small>{sub}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-foot">
+        <button className="btn-gold" onClick={onProfile}>Edit Profile</button>
+        <div style={{ marginTop: 12 }} className="settings-label">Workspace</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button className="settings-choice" onClick={onTools}><strong>Measure & AI</strong><small>Avatar sizing and fit guidance</small></button>
+          <button className="settings-choice" onClick={onEscrow}><strong>Order Escrow</strong><small>Milestones and release controls</small></button>
+          <button className="settings-choice" onClick={onCommunity}><strong>Community Hub</strong><small>Forums and artisan directory</small></button>
+          <button className="settings-choice" onClick={onSubscriptions}><strong>Subscriptions</strong><small>Plans, rewards, and badges</small></button>
+          <button className="settings-choice" onClick={onAdmin} style={{ gridColumn: "1 / -1" }}><strong>Data & Admin</strong><small>Operations dashboard and moderation cues</small></button>
+        </div>
       </div>
     </div>
   );
@@ -3097,6 +4048,10 @@ export default function VioFashion() {
 
   useEffect(() => { injectFonts(); injectCSS(); }, []);
   useEffect(() => { localStorage.setItem("vio-theme", theme); }, [theme]);
+  useEffect(() => {
+    document.body.setAttribute("data-vio-theme", theme);
+    return () => document.body.removeAttribute("data-vio-theme");
+  }, [theme]);
   useEffect(() => { localStorage.setItem("vio-chat-theme", chatTheme); }, [chatTheme]);
   useEffect(() => { localStorage.setItem("vio-nav-pos", JSON.stringify(navPos)); }, [navPos]);
   useEffect(() => { setNavOpen(false); }, [screen]);
@@ -3183,7 +4138,26 @@ export default function VioFashion() {
       case "live":          return <LiveScreen user={user} profile={profile} />;
       case "search":        return <SearchScreen user={user} profile={profile} onStartChat={openChat} />;
       case "notifications": return <NotificationsScreen user={user} />;
-      case "settings":      return <SettingsScreen theme={theme} setTheme={setTheme} chatTheme={chatTheme} setChatTheme={setChatTheme} onProfile={() => setScreen("profile")} onBack={() => setScreen("feed")} />;
+      case "tools":         return <ToolsScreen user={user} onBack={() => setScreen("settings")} />;
+      case "escrow":        return <EscrowScreen user={user} profile={profile} onBack={() => setScreen("settings")} />;
+      case "community":     return <CommunityScreen user={user} onBack={() => setScreen("settings")} onStartChat={openChat} />;
+      case "subscriptions": return <SubscriptionsScreen user={user} profile={profile} onBack={() => setScreen("settings")} />;
+      case "admin":         return <AdminScreen user={user} profile={profile} onBack={() => setScreen("settings")} />;
+      case "settings":      return (
+        <SettingsScreen
+          theme={theme}
+          setTheme={setTheme}
+          chatTheme={chatTheme}
+          setChatTheme={setChatTheme}
+          onProfile={() => setScreen("profile")}
+          onBack={() => setScreen("feed")}
+          onTools={() => setScreen("tools")}
+          onEscrow={() => setScreen("escrow")}
+          onCommunity={() => setScreen("community")}
+          onSubscriptions={() => setScreen("subscriptions")}
+          onAdmin={() => setScreen("admin")}
+        />
+      );
       default:              return <FeedScreen user={user} onSearch={() => setScreen("search")} onNotifications={() => setScreen("notifications")} onStartChat={openChat} />;
     }
   };

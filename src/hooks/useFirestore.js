@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   collection, doc, getDoc, getDocs, addDoc, setDoc,
   updateDoc, query, where, orderBy, limit,
-  onSnapshot, serverTimestamp, increment, writeBatch,
+  onSnapshot, serverTimestamp, increment, writeBatch, arrayUnion,
 } from "firebase/firestore";
 import { db } from "../firebaseClient";
 
@@ -127,9 +127,15 @@ export async function submitOffer({ requestId, creatorId, message, price, delive
 }
 
 export async function acceptOffer(offerId, requestId) {
+  const offerSnap = await getDoc(dref("offers", offerId));
+  const acceptedCreatorId = offerSnap.exists() ? offerSnap.data().creator_id || null : null;
   const batch = writeBatch(db);
   batch.update(dref("offers",   offerId),   { status: "accepted" });
-  batch.update(dref("requests", requestId), { status: "in_progress" });
+  batch.update(dref("requests", requestId), {
+    status: "in_progress",
+    accepted_creator_id: acceptedCreatorId,
+    updated_at: serverTimestamp(),
+  });
   await batch.commit();
 
   // reject remaining pending offers
@@ -367,4 +373,240 @@ export async function endLiveStream(streamId) {
     is_active:  false,
     ended_at:   serverTimestamp(),
   });
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  MEASUREMENT PROFILES
+// ════════════════════════════════════════════════════════════════════
+
+export async function getMeasurementProfile(userId) {
+  if (!userId) return null;
+  const snap = await getDoc(dref("measurement_profiles", userId));
+  return snap2obj(snap);
+}
+
+export async function saveMeasurementProfile({ userId, payload }) {
+  if (!userId) throw new Error("User is required");
+  const clean = {
+    height: payload.height || "",
+    chest: payload.chest || "",
+    waist: payload.waist || "",
+    hips: payload.hips || "",
+    inseam: payload.inseam || "",
+    shoulder: payload.shoulder || "",
+    generated_fit: payload.generated_fit || null,
+    updated_at: Date.now(),
+    updated_at_server: serverTimestamp(),
+  };
+  await setDoc(dref("measurement_profiles", userId), clean, { merge: true });
+  await setDoc(dref("profiles", userId), { measurement_profile: clean, updated_at: serverTimestamp() }, { merge: true });
+  return clean;
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  COMMUNITY
+// ════════════════════════════════════════════════════════════════════
+
+export function useCommunityPosts(limitCount = 40) {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const q = query(col("community_posts"), orderBy("created_at", "desc"), limit(limitCount));
+    const unsub = onSnapshot(q, async (snap) => {
+      const rows = await Promise.all(snaps(snap).map(async (row) => {
+        if (row.author_id) {
+          const ps = await getDoc(dref("profiles", row.author_id));
+          row.author = snap2obj(ps);
+        }
+        return row;
+      }));
+      setPosts(rows);
+      setLoading(false);
+      setError("");
+    }, (err) => {
+      console.error("Failed to load community posts", err);
+      setPosts([]);
+      setLoading(false);
+      setError(err.message || "Unable to load community posts.");
+    });
+    return unsub;
+  }, [limitCount]);
+
+  return { posts, loading, error };
+}
+
+export async function createCommunityPost({ authorId, content }) {
+  const text = String(content || "").trim();
+  if (!authorId) throw new Error("Author is required");
+  if (text.length < 2) throw new Error("Post is too short.");
+  if (text.length > 600) throw new Error("Post must be 600 characters or fewer.");
+  return addDoc(col("community_posts"), {
+    author_id: authorId,
+    content: text,
+    mentions: [...new Set((text.match(/@\w+/g) || []).map(m => m.toLowerCase()))],
+    created_at: serverTimestamp(),
+  });
+}
+
+export async function getArtisanDirectory({ needle = "", limitCount = 40 } = {}) {
+  const q = String(needle || "").trim().toLowerCase();
+  const snap = await getDocs(query(col("profiles"), limit(Math.max(limitCount, 40))));
+  return snaps(snap)
+    .filter(p => ["tailor", "designer", "makeup_artist", "shoemaker", "admin", "owner"].includes(p.role))
+    .filter(p => !q
+      || (p.username || "").toLowerCase().includes(q)
+      || (p.full_name || "").toLowerCase().includes(q)
+      || (p.role || "").toLowerCase().includes(q)
+      || (p.location || "").toLowerCase().includes(q)
+      || (p.services || []).some(s => String(s).toLowerCase().includes(q)))
+    .slice(0, limitCount);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  SUBSCRIPTIONS
+// ════════════════════════════════════════════════════════════════════
+
+const VALID_TIERS = ["free", "pro", "elite"];
+
+export async function setSubscriptionTier({ userId, tier }) {
+  if (!userId) throw new Error("User is required");
+  if (!VALID_TIERS.includes(tier)) throw new Error("Invalid subscription tier.");
+  const at = serverTimestamp();
+  await setDoc(dref("profiles", userId), { subscription_tier: tier, updated_at: at }, { merge: true });
+  await addDoc(col("subscription_events"), {
+    user_id: userId,
+    tier,
+    action: "set_tier",
+    created_at: at,
+  });
+}
+
+export function useSubscriptionEvents(userId, limitCount = 20) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!userId) { setEvents([]); setLoading(false); return; }
+    const q = query(col("subscription_events"), where("user_id", "==", userId), orderBy("created_at", "desc"), limit(limitCount));
+    const unsub = onSnapshot(q, (snap) => {
+      setEvents(snaps(snap));
+      setLoading(false);
+      setError("");
+    }, (err) => {
+      console.error("Failed to load subscription events", err);
+      setEvents([]);
+      setLoading(false);
+      setError(err.message || "Unable to load subscription events.");
+    });
+    return unsub;
+  }, [userId, limitCount]);
+
+  return { events, loading, error };
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  ESCROW EVENTS
+// ════════════════════════════════════════════════════════════════════
+
+export async function releaseEscrowForRequest({ requestId, actorId }) {
+  if (!requestId || !actorId) throw new Error("Request and actor are required.");
+  const reqSnap = await getDoc(dref("requests", requestId));
+  if (!reqSnap.exists()) throw new Error("Request not found.");
+  const request = reqSnap.data();
+  const acceptedFromRequest = request.accepted_creator_id || null;
+  const offersSnap = await getDocs(query(col("offers"), where("request_id", "==", requestId), where("status", "==", "accepted"), limit(1)));
+  const accepted = offersSnap.docs[0]?.data() || null;
+  const participants = [...new Set([request.customer_id, acceptedFromRequest, accepted?.creator_id, actorId].filter(Boolean))];
+  await updateDoc(dref("requests", requestId), { status: "paid", updated_at: serverTimestamp() });
+  await addDoc(col("escrow_events"), {
+    request_id: requestId,
+    actor_id: actorId,
+    type: "release",
+    status_after: "paid",
+    participants,
+    created_at: serverTimestamp(),
+  });
+}
+
+export function useEscrowEvents(requestId, limitCount = 20) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!requestId) { setEvents([]); setLoading(false); return; }
+    const q = query(col("escrow_events"), where("request_id", "==", requestId), orderBy("created_at", "desc"), limit(limitCount));
+    const unsub = onSnapshot(q, (snap) => {
+      setEvents(snaps(snap));
+      setLoading(false);
+      setError("");
+    }, (err) => {
+      console.error("Failed to load escrow events", err);
+      setEvents([]);
+      setLoading(false);
+      setError(err.message || "Unable to load escrow events.");
+    });
+    return unsub;
+  }, [requestId, limitCount]);
+
+  return { events, loading, error };
+}
+
+export async function appendEscrowMilestone({ requestId, actorId, participants, label, stage }) {
+  if (!requestId || !actorId) throw new Error("Request and actor are required.");
+  const stageValue = typeof stage === "number" ? stage : null;
+  const participantList = [...new Set([...(participants || []), actorId].filter(Boolean))];
+  await addDoc(col("escrow_events"), {
+    request_id: requestId,
+    actor_id: actorId,
+    type: "milestone",
+    label: label || "Milestone update",
+    stage: stageValue,
+    participants: participantList,
+    created_at: serverTimestamp(),
+  });
+  if (requestId) {
+    const requestPatch = {
+      milestone_stage: stageValue,
+      milestone_log: arrayUnion({ label: label || "Milestone update", by: actorId, at: Date.now() }),
+      updated_at: serverTimestamp(),
+    };
+    if (typeof stageValue === "number" && stageValue >= 3) requestPatch.status = "completed";
+    else if (typeof stageValue === "number" && stageValue >= 1) requestPatch.status = "in_progress";
+    await setDoc(dref("requests", requestId), requestPatch, { merge: true });
+  }
+}
+
+export async function backfillAcceptedCreators(limitCount = 250) {
+  const reqSnap = await getDocs(
+    query(
+      col("requests"),
+      where("status", "in", ["in_progress", "completed", "paid"]),
+      limit(limitCount),
+    )
+  );
+  let fixed = 0;
+  for (const docSnap of reqSnap.docs) {
+    const request = docSnap.data();
+    if (request.accepted_creator_id) continue;
+    const acceptedSnap = await getDocs(
+      query(
+        col("offers"),
+        where("request_id", "==", docSnap.id),
+        where("status", "==", "accepted"),
+        limit(1),
+      )
+    );
+    const creatorId = acceptedSnap.docs[0]?.data()?.creator_id || null;
+    if (!creatorId) continue;
+    await updateDoc(dref("requests", docSnap.id), {
+      accepted_creator_id: creatorId,
+      updated_at: serverTimestamp(),
+    });
+    fixed += 1;
+  }
+  return fixed;
 }
