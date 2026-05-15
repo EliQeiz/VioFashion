@@ -70,16 +70,16 @@ const CSS = `
   .nav-post-btn:active{transform:scale(0.94) rotate(45deg);}
   .nav-badge{position:absolute;top:4px;right:6px;width:8px;height:8px;background:#EF4444;border-radius:50%;border:1.5px solid rgba(21,14,32,0.92);}
   .nav-pill.compact{left:38px;top:50%;bottom:auto;transform:translate(-50%,-50%);border-radius:24px;padding:0;gap:0;background:transparent;border:none;box-shadow:none;justify-content:center;pointer-events:none;touch-action:none;}
-  .nav-pill.compact.open{background:transparent !important;border:none !important;box-shadow:none !important;}
-  .nav-pill.compact.open.vertical{height:min(70vh,520px);width:42px;flex-direction:column;}
-  .nav-pill.compact.open.horizontal{width:min(78vw,340px);height:42px;flex-direction:row;}
-  .nav-roll{display:flex;align-items:center;justify-content:space-between;flex:1;min-height:0;min-width:0;pointer-events:none;}
+  .nav-pill.compact.open{background:transparent !important;border:none !important;box-shadow:none !important;gap:7px;}
+  .nav-pill.compact.open.vertical{height:min(70vh,520px);width:42px;flex-direction:column;align-items:center;justify-content:center;}
+  .nav-pill.compact.open.horizontal{width:min(92vw,380px);height:42px;flex-direction:row;align-items:center;justify-content:center;}
+  .nav-roll{display:flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:0;min-width:0;pointer-events:none;}
   .nav-pill.vertical .nav-roll{flex-direction:column;width:100%;}
   .nav-pill.horizontal .nav-roll{flex-direction:row;height:100%;}
-  .nav-roll.upper{padding:0 7px 7px 0;}
-  .nav-roll.lower{padding:7px 0 0 7px;}
-  .nav-pill.horizontal .nav-roll.upper{padding:0 7px 0 0;}
-  .nav-pill.horizontal .nav-roll.lower{padding:0 0 0 7px;}
+  .nav-roll.upper{padding:0;}
+  .nav-roll.lower{padding:0;}
+  .nav-pill.horizontal .nav-roll.upper{padding:0;}
+  .nav-pill.horizontal .nav-roll.lower{padding:0;}
   .nav-pill.compact .nav-item{width:32px;height:32px;padding:0;justify-content:center;font-size:0;border-radius:13px;border:1.8px solid rgba(248,245,255,0.42);background:rgba(21,14,32,0.18);backdrop-filter:blur(8px);pointer-events:auto;}
   .nav-pill.compact .nav-item svg{width:15px;height:15px;}
   .nav-pill.compact .nav-item.active{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,0.25),0 8px 18px rgba(109,40,217,0.3);}
@@ -97,7 +97,6 @@ const CSS = `
   .feed-video-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
   .feed-cinema{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,4,9,0.97) 0%,rgba(6,4,9,0.35) 35%,transparent 65%),linear-gradient(to bottom,rgba(6,4,9,0.6) 0%,transparent 25%);}
   .feed-topbar{position:absolute;top:0;left:0;right:0;z-index:10;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;}
-  .feed-logo{font-family:var(--ff-serif);font-size:22px;font-weight:700;letter-spacing:0.06em;background:linear-gradient(135deg,var(--white),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
   .feed-tabs-row{display:flex;gap:18px;}
   .feed-tab{font-family:var(--ff-sans);font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;position:relative;transition:color 0.2s;}
   .feed-tab.on{color:var(--white);}
@@ -497,7 +496,6 @@ const CSS = `
     .shell{max-width:100%;height:100dvh;box-shadow:none;}
     .feed-card{height:100dvh;}
     .feed-topbar{padding:calc(10px + env(safe-area-inset-top)) 12px 0;gap:8px;}
-    .feed-logo{font-size:19px;}
     .feed-tabs-row{gap:10px;}
     .feed-tab{font-size:10px;letter-spacing:0.06em;}
     .feed-editorial{bottom:calc(98px + env(safe-area-inset-bottom));padding:0 14px;}
@@ -1802,7 +1800,6 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   const [liked, setLiked]       = useState({});
   const [reactions, setReactions] = useState({});
   const [saved, setSaved]       = useState({});
-  const [muted, setMuted]       = useState({});
   const [followed, setFollowed] = useState({});
   const [notice, setNotice]     = useState("");
   const [commentVideo, setCommentVideo] = useState(null);
@@ -1810,7 +1807,8 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   const [quickActions, setQuickActions] = useState(null);
   const [viewCreator, setViewCreator]   = useState(null);
   const pressTimer = useRef(null);
-  const lastTap = useRef({});
+  const tapTracker = useRef({});
+  const videoRefs = useRef({});
 
   useEffect(() => {
     const q = query(collection(db, "videos"), where("is_published", "==", true), orderBy("created_at", "desc"), limit(20));
@@ -1844,6 +1842,13 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
     }).catch(error => console.error("Failed to load social state", error));
   }, [user]);
 
+  useEffect(() => () => {
+    window.clearTimeout(pressTimer.current);
+    Object.values(tapTracker.current).forEach((tap) => {
+      if (tap?.timer) window.clearTimeout(tap.timer);
+    });
+  }, []);
+
   const showNotice = (msg) => {
     setNotice(msg);
     window.clearTimeout(showNotice.t);
@@ -1851,15 +1856,19 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   };
 
   const allVideos = videos.length > 0 ? videos : DEMO_VIDEOS;
-  const followedVideos = allVideos.filter(v => followed[v.creator?.id || v.creator_id] || v.creator_id === user?.uid);
+  const followedVideos = allVideos.filter(v => followed[v.creator?.id || v.creator_id]);
+  const reactionCount = (v) => (v.likes_count || 0) + (v.happy_count || 0) + (v.wow_count || 0) + (v.sad_count || 0) + (v.angry_count || 0);
+  const trendingScore = (v) => reactionCount(v) + (v.comments_count || 0) + (v.shares_count || 0) + (v.saves_count || 0);
   const display = tab === "following"
-    ? (followedVideos.length ? followedVideos : allVideos)
+    ? followedVideos
     : tab === "trending"
-      ? [...allVideos].sort((a, b) => ((b.likes_count || 0) + (b.happy_count || 0) + (b.wow_count || 0) + (b.comments_count || 0) + (b.shares_count || 0)) - ((a.likes_count || 0) + (a.happy_count || 0) + (a.wow_count || 0) + (a.comments_count || 0) + (a.shares_count || 0)))
+      ? [...allVideos].sort((a, b) => trendingScore(b) - trendingScore(a))
       : allVideos;
-  const feedModeNotice = tab === "following" && followedVideos.length === 0 && allVideos.length > 0
-    ? "Follow creators to personalize this tab. Showing available posts for now."
-    : "";
+  const emptyState = tab === "following"
+    ? { title: "No follower posts available", sub: "No posts from followers available." }
+    : tab === "trending"
+      ? { title: "No trending posts available", sub: "New posts will show up here as engagement grows." }
+      : { title: "No posts here yet", sub: "Share something to light up Discover." };
 
   const setReaction = async (id, reactionId = "love") => {
     const current = reactions[id] || (liked[id] ? "love" : null);
@@ -1900,19 +1909,57 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
 
   const toggleLike = (id) => setReaction(id, "love");
 
-  const handleCardPointerDown = (video) => {
+  const getTapRegion = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    if (x < rect.width * 0.33) return "left";
+    if (x > rect.width * 0.67) return "right";
+    return "center";
+  };
+
+  const toggleVideoPlayback = (videoId) => {
+    const media = videoRefs.current[videoId];
+    if (!media) return;
+    if (media.paused) {
+      media.play().catch(() => {});
+      return;
+    }
+    media.pause();
+  };
+
+  const seekVideoBy = (videoId, deltaSeconds) => {
+    const media = videoRefs.current[videoId];
+    if (!media || !Number.isFinite(media.duration)) return;
+    media.currentTime = Math.min(media.duration, Math.max(0, media.currentTime + deltaSeconds));
+  };
+
+  const handleCardPointerDown = (video, event) => {
+    if (event.target.closest("button,input,textarea,select,audio")) return;
     window.clearTimeout(pressTimer.current);
     pressTimer.current = window.setTimeout(() => setQuickActions(video), 520);
   };
 
-  const handleCardPointerUp = (video) => {
+  const handleCardPointerUp = (video, event) => {
+    if (event.target.closest("button,input,textarea,select,audio")) return;
     window.clearTimeout(pressTimer.current);
+    if (!video.video_url) return;
+    const region = getTapRegion(event);
     const now = Date.now();
-    if (now - (lastTap.current[video.id] || 0) < 320) {
-      toggleLike(video.id);
-      showNotice("Reacted to post.");
+    const tap = tapTracker.current[video.id];
+    if (tap?.timer) window.clearTimeout(tap.timer);
+    if (tap && now - tap.time < 280) {
+      if (region === "left") { seekVideoBy(video.id, -5); showNotice("Rewind 5s"); }
+      if (region === "right") { seekVideoBy(video.id, 5); showNotice("Forward 5s"); }
+      tapTracker.current[video.id] = null;
+      return;
     }
-    lastTap.current[video.id] = now;
+    tapTracker.current[video.id] = {
+      time: now,
+      region,
+      timer: window.setTimeout(() => {
+        if (region === "center") toggleVideoPlayback(video.id);
+      }, 220),
+    };
   };
 
   const toggleSave = async (id) => {
@@ -1933,7 +1980,7 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   };
 
   const toggleFollow = async (cid) => {
-    if (!user || cid === user.uid) return;
+    if (!user || !cid || cid === user.uid) return;
     const fid = `${user.uid}_${cid}`;
     const isF = followed[cid];
     setFollowed(p => ({ ...p, [cid]: !isF }));
@@ -1955,16 +2002,43 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
   return (
     <div style={{ height: "100%", position: "relative" }}>
       <div className="feed-wrap">
-        {feedModeNotice && <div style={{ position: "absolute", top: 72, left: 18, right: 18, zIndex: 70, background: "rgba(21,14,32,0.88)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "9px 12px", color: "var(--gold-lt)", fontSize: 11, textAlign: "center" }}>{feedModeNotice}</div>}
-        {display.length === 0 && <div className="empty-state" style={{ height: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}><div className="empty-icon">✦</div><div className="empty-title">No posts here yet</div><div className="empty-sub">Follow creators or switch back to Discover</div></div>}
+        {display.length === 0 && (
+          <div className="empty-state" style={{ height: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div className="empty-title">{emptyState.title}</div>
+            <div className="empty-sub">{emptyState.sub}</div>
+          </div>
+        )}
         {display.map((v, i) => {
           const name = v.creator?.full_name || v.creator?.username || "Creator";
-          const [first, ...rest] = name.split(" "); const last = rest.join(" ");
+          const [first, ...rest] = name.split(" ");
+          const last = rest.join(" ");
           const pal = v.pal ?? (i % PALETTES.length);
+          const creatorId = v.creator?.id || v.creator_id;
           return (
-            <div key={v.id} className="feed-card" onPointerDown={() => handleCardPointerDown(v)} onPointerUp={() => handleCardPointerUp(v)} onPointerCancel={() => window.clearTimeout(pressTimer.current)}>
+            <div key={v.id} className="feed-card" onPointerDown={(event) => handleCardPointerDown(v, event)} onPointerUp={(event) => handleCardPointerUp(v, event)} onPointerCancel={() => window.clearTimeout(pressTimer.current)}>
               <div className="feed-video-bg" style={{ background: v.thumbnail_url ? `url(${v.thumbnail_url}) center/cover no-repeat` : PALETTES[pal] }}>
-                {v.video_url && <video src={v.video_url} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} autoPlay muted={muted[v.id] !== false} loop playsInline controls={muted[v.id] === false} />}
+                {v.video_url && (
+                  <video
+                    ref={(node) => {
+                      if (node) videoRefs.current[v.id] = node;
+                      else delete videoRefs.current[v.id];
+                    }}
+                    src={v.video_url}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                    autoPlay
+                    muted={false}
+                    loop
+                    playsInline
+                    preload="metadata"
+                    controls={false}
+                    onLoadedMetadata={(event) => {
+                      const media = event.currentTarget;
+                      media.muted = false;
+                      media.volume = 1;
+                      if (media.paused) media.play().catch(() => {});
+                    }}
+                  />
+                )}
                 {!v.thumbnail_url && !v.video_url && (
                   <><div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.18 }}>
                     <svg width="160" height="280" viewBox="0 0 160 280" fill="none"><ellipse cx="80" cy="45" rx="30" ry="38" fill="rgba(255,255,255,0.7)" /><path d="M50 83 Q28 120 22 200 Q65 192 80 185 Q95 192 138 200 Q132 120 110 83 Q96 108 80 108 Q64 108 50 83Z" fill="rgba(255,255,255,0.5)" /><path d="M22 200 Q14 255 24 280 L55 265 L65 205 Q72 195 80 195 Q88 195 95 205 L105 265 L136 280 Q146 255 138 200Z" fill="rgba(255,255,255,0.4)" /></svg>
@@ -1974,28 +2048,27 @@ function FeedScreen({ user, onSearch, onNotifications, onStartChat }) {
               <div className="feed-cinema" />
               <div className="edition-badge"><div className="edition-num">{String(i + 1).padStart(2, "0")}</div><div className="edition-label">Edition</div></div>
               <div className="feed-topbar">
-                <div className="feed-logo">Atelier</div>
-                <div className="feed-tabs-row">{[["discover", "Discover"], ["following", "Following"], ["trending", "Trending"]].map(([k, l]) => (<button key={k} className={`feed-tab ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>{l}</button>))}</div>
-                <div className="feed-topbar-right"><button className="feed-icon-btn" onClick={onSearch}><IcoSearch /></button><button className="feed-icon-btn" onClick={onNotifications}><IcoBell /></button></div>
+                <div className="feed-tabs-row">{[["discover", "Discover"], ["following", "Following"], ["trending", "Trending"]].map(([k, l]) => (<button key={k} className={`feed-tab ${tab === k ? "on" : ""}`} onClick={(event) => { event.stopPropagation(); setTab(k); }}>{l}</button>))}</div>
+                <div className="feed-topbar-right"><button className="feed-icon-btn" onClick={(event) => { event.stopPropagation(); onSearch(); }}><IcoSearch /></button><button className="feed-icon-btn" onClick={(event) => { event.stopPropagation(); onNotifications(); }}><IcoBell /></button></div>
               </div>
               <div className="feed-action-tray">
-                <button className="feed-action" onClick={() => toggleLike(v.id)}><div className={`feed-action-circle ${reactions[v.id] ? "lit" : ""}`}>{reactions[v.id] && reactions[v.id] !== "love" ? reactionById(reactions[v.id]).icon : <IcoHeart lit={!!reactions[v.id]} />}</div><span className="feed-action-num">{fmt(v.likes_count)}</span></button>
-                <button className="feed-action" onClick={() => setCommentVideo(v)}><div className="feed-action-circle"><IcoComment /></div><span className="feed-action-num">{fmt(v.comments_count)}</span></button>
-                <button className="feed-action" onClick={() => toggleSave(v.id)}><div className={`feed-action-circle ${saved[v.id] ? "lit" : ""}`}><IcoBookmark /></div><span className="feed-action-num">{fmt(v.saves_count || 0)}</span></button>
-                <button className="feed-action" onClick={() => setShareVideoItem(v)}><div className="feed-action-circle"><IcoShare /></div><span className="feed-action-num">{fmt(v.shares_count || 0)}</span></button>
+                <button className="feed-action" onClick={(event) => { event.stopPropagation(); toggleLike(v.id); }}><div className={`feed-action-circle ${reactions[v.id] ? "lit" : ""}`}>{reactions[v.id] && reactions[v.id] !== "love" ? reactionById(reactions[v.id]).icon : <IcoHeart lit={!!reactions[v.id]} />}</div><span className="feed-action-num">{fmt(reactionCount(v))}</span></button>
+                <button className="feed-action" onClick={(event) => { event.stopPropagation(); setCommentVideo(v); }}><div className="feed-action-circle"><IcoComment /></div><span className="feed-action-num">{fmt(v.comments_count)}</span></button>
+                <button className="feed-action" onClick={(event) => { event.stopPropagation(); toggleSave(v.id); }}><div className={`feed-action-circle ${saved[v.id] ? "lit" : ""}`}><IcoBookmark /></div><span className="feed-action-num">{fmt(v.saves_count || 0)}</span></button>
+                <button className="feed-action" onClick={(event) => { event.stopPropagation(); setShareVideoItem(v); }}><div className="feed-action-circle"><IcoShare /></div><span className="feed-action-num">{fmt(v.shares_count || 0)}</span></button>
               </div>
               <div className="feed-editorial">
                 <div className="feed-creator-giant">{first} <span>{last}</span></div>
                 <div className="feed-handle-row">
-                  <div className="feed-handle-av" style={{ background: PALETTES[pal], cursor: "pointer" }} onClick={() => v.creator?.id && user?.uid !== v.creator?.id && setViewCreator(v.creator.id)}>
+                  <div className="feed-handle-av" style={{ background: PALETTES[pal], cursor: creatorId && user?.uid !== creatorId ? "pointer" : "default" }} onClick={(event) => { event.stopPropagation(); if (creatorId && user?.uid !== creatorId) setViewCreator(creatorId); }}>
                     {v.creator?.avatar_url ? <img src={v.creator.avatar_url} alt={name} /> : initials(name)}
                   </div>
-                  <span className="feed-handle-text" style={{ cursor: "pointer" }} onClick={() => v.creator?.id && user?.uid !== v.creator?.id && setViewCreator(v.creator.id)}>@{v.creator?.username || "creator"}</span>
-                  {user?.uid !== v.creator?.id && <button className={`feed-follow-pill ${followed[v.creator?.id] ? "following" : ""}`} onClick={() => toggleFollow(v.creator?.id)}>{followed[v.creator?.id] ? "Following" : "+ Follow"}</button>}
+                  <span className="feed-handle-text" style={{ cursor: creatorId && user?.uid !== creatorId ? "pointer" : "default" }} onClick={(event) => { event.stopPropagation(); if (creatorId && user?.uid !== creatorId) setViewCreator(creatorId); }}>@{v.creator?.username || "creator"}</span>
+                  {user?.uid !== creatorId && <button className={`feed-follow-pill ${followed[creatorId] ? "following" : ""}`} onClick={(event) => { event.stopPropagation(); toggleFollow(creatorId); }}>{followed[creatorId] ? "Following" : "+ Follow"}</button>}
                 </div>
                 {v.caption && <p className="feed-caption">{v.caption}</p>}
                 {v.tags?.length > 0 && <div className="feed-tags">{v.tags.map(t => <span key={t} className="feed-tag">{t.startsWith("#") ? t : `#${t}`}</span>)}</div>}
-                <div className="feed-sound-row" onClick={() => setMuted(p => ({ ...p, [v.id]: p[v.id] === false }))} style={{ cursor: v.video_url ? "pointer" : "default" }}><div className="feed-vinyl" /><IcoMusic /><span className="feed-sound-text">{v.video_url ? (muted[v.id] === false ? "Sound on" : "Tap for sound") : (v.sound_name || "No sound")}{v.sound_name ? ` · ${v.sound_name}` : ""}</span></div>
+                <div className="feed-sound-row"><div className="feed-vinyl" /><IcoMusic /><span className="feed-sound-text">{v.video_url ? (v.sound_name ? `Original sound - ${v.sound_name}` : "Original sound") : (v.sound_name || "No sound")}</span></div>
               </div>
             </div>
           );
@@ -3132,3 +3205,4 @@ export default function VioFashion() {
     </div>
   );
 }
+
